@@ -1,0 +1,24 @@
+{
+  "name": "bird-identifier",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "cap:sync": "npx cap sync",
+    "cap:ios": "npx cap add ios && npx cap open ios",
+    "cap:android": "npx cap add android && npx cap open android",
+    "cap:build:ios": "npx cap sync ios && npx cap build ios",
+    "cap:build:android": "npx cap sync android && npx cap build android"
+  },
+  "keywords": ["bird", "identifier", "pwa", "mobile", "capacitor"],
+  "author": "",
+  "license": "ISC",
+  "description": "Bird Identifier - Identify birds from photos using AI",
+  "dependencies": {
+    "@capacitor/android": "^8.3.3",
+    "@capacitor/cli": "^8.3.3",
+    "@capacitor/core": "^8.3.3",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.3.3",
+    "@capacitor/status-bar": "^8.0.2"
+  }
+}

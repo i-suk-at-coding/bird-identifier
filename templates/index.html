@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="theme-color" content="#0B1A2E">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="鸟类识别">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <title>{{ i18n.app_title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐦</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230B1A2E'/><text y='.65em' x='50' text-anchor='middle' font-size='50'>🐦</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🐦 {{ i18n.app_title }}</h1>
+            <button id="lang-toggle" class="lang-btn">{{ i18n.switch_language }}</button>
+        </header>
+
+        <main>
+            <div class="upload-section" id="upload-section">
+                <h2>{{ i18n.upload_title }}</h2>
+
+                <div class="upload-zone" id="upload-zone">
+                    <div class="upload-icon">📷</div>
+                    <p>{{ i18n.upload_hint }}</p>
+                    <input type="file" id="file-input" accept="image/*" hidden>
+                </div>
+
+                <div class="button-row">
+                    <button id="btn-upload" class="btn btn-primary">{{ i18n.btn_upload }}</button>
+                    <button id="btn-camera" class="btn btn-secondary">{{ i18n.btn_camera }}</button>
+                    <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
+                </div>
+
+                <div id="preview-container" class="preview-container hidden">
+                    <img id="preview-image" src="" alt="Preview">
+                </div>
+
+                <button id="btn-identify" class="btn btn-identify hidden">{{ i18n.btn_identify }}</button>
+            </div>
+
+            <div class="loading-section hidden" id="loading-section">
+                <div class="spinner"></div>
+                <p>{{ i18n.loading }}</p>
+            </div>
+
+            <div class="error-section hidden" id="error-section">
+                <p class="error-message" id="error-message"></p>
+                <button id="btn-retry" class="btn btn-primary">{{ i18n.btn_try_again }}</button>
+            </div>
+
+            <div class="results-section hidden" id="results-section">
+                <div id="results-content"></div>
+                <button id="btn-new" class="btn btn-primary">{{ i18n.btn_try_again }}</button>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by iNaturalist</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
