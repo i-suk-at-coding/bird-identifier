@@ -2,7 +2,7 @@ let currentLang = 'zh';
 let selectedFile = null;
 
 // API Configuration - change this to your deployed backend URL
-const API_BASE_URL = ''; // Empty = same origin (web dev), set to 'https://your-render-app.onrender.com' for mobile
+const API_BASE_URL = 'https://bird-identifier-2tvr.onrender.com'; // Deployed Flask API
 
 // DOM Elements
 const uploadZone = document.getElementById('upload-zone');
