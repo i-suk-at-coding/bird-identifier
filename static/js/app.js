@@ -2,7 +2,7 @@ let currentLang = 'zh';
 let selectedFile = null;
 
 // API Configuration - use env variable API_URL from Flask, fallback to same origin
-const API_BASE_URL = window.API_URL || '';
+const API_BASE_URL = (typeof window.API_URL !== 'undefined' && window.API_URL) ? window.API_URL : '';
 
 // DOM Elements
 const uploadZone = document.getElementById('upload-zone');
