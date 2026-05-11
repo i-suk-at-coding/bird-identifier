@@ -1,8 +1,10 @@
 let currentLang = 'zh';
 let selectedFile = null;
 
-// API Configuration - change this to your deployed backend URL
-const API_BASE_URL = 'https://bird-identifier-2tvr.onrender.com'; // Deployed Flask API
+// API Configuration - auto-detect local vs production
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+    ? ''  // Local: use same origin
+    : 'https://bird-identifier-2tvr.onrender.com';  // Production: use deployed backend
 
 // DOM Elements
 const uploadZone = document.getElementById('upload-zone');
