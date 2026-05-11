@@ -110,18 +110,36 @@ def call_inaturalist(image_data, content_type, filename, token):
                 taxon = first.get('taxon', {})
                 common_ancestor = result.get('common_ancestor', {}).get('taxon', {})
 
-                # Get taxon ID for detailed info
-                taxon_id = taxon.get('id') or common_ancestor.get('id')
+                # Get the most specific taxon ID (prefer taxon over common_ancestor)
+                # taxon is the specific species prediction, common_ancestor is the group
+                specific_taxon_id = taxon.get('id') if taxon.get('id') else None
+                group_taxon_id = common_ancestor.get('id')
+                
+                # Use specific taxon if available, otherwise fall back to group
+                taxon_id = specific_taxon_id or group_taxon_id
+                
+                # Get the most specific English name
                 en_name = taxon.get('preferred_common_name') or common_ancestor.get('preferred_common_name') or common_ancestor.get('english_common_name')
                 scientific_name = taxon.get('name') or common_ancestor.get('name', '')
                 wiki_url = taxon.get('wikipedia_url') or common_ancestor.get('wikipedia_url', '')
                 photo_url = common_ancestor.get('default_photo', {}).get('medium_url', '')
 
-                # Get Chinese common name from iNaturalist API
-                chinese_name = get_chinese_name(taxon_id, token)
+                # Get Chinese name - try specific taxon first, then group
+                # Only use specific taxon if it's at species level or below (rank_level <= 10)
+                chinese_name = None
+                taxon_rank = taxon.get('rank', '')
+                taxon_rank_level = taxon.get('rank_level', 99)
+                
+                # If the specific taxon is a species or below, use it
+                if specific_taxon_id and taxon_rank_level <= 10:
+                    chinese_name = get_chinese_name(specific_taxon_id, token)
+                
+                # Fall back to group name if no specific name found
+                if not chinese_name and group_taxon_id:
+                    chinese_name = get_chinese_name(group_taxon_id, token)
 
-                # Get full taxonomy - try v1 API which returns more complete data
-                taxonomy = get_full_taxonomy(taxon_id, common_ancestor)
+                # Get full taxonomy using common_ancestor
+                taxonomy = get_full_taxonomy(group_taxon_id, common_ancestor)
 
                 print(f"  Extracted: en_name={en_name}, chinese={chinese_name}, scientific={scientific_name}")
 
