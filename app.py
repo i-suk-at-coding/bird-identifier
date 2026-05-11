@@ -111,7 +111,7 @@ def call_inaturalist(image_data, content_type, filename, token):
                 
                 # Loop through top results to find a species-level match
                 best_taxon = None
-                best_score = 0
+                best_score = result['results'][0].get('combined_score', 0) if result['results'] else 0
                 
                 for idx, item in enumerate(result['results'][:5]):
                     t = item.get('taxon', {})
