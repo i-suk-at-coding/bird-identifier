@@ -106,65 +106,61 @@ def call_inaturalist(image_data, content_type, filename, token):
             result = response.json()
 
             if 'results' in result and len(result['results']) > 0:
-                first = result['results'][0]
-                taxon = first.get('taxon', {})
                 common_ancestor = result.get('common_ancestor', {}).get('taxon', {})
-
-                # Debug: print what we got from API
-                print(f"  DEBUG taxon: rank={taxon.get('rank')}, rank_level={taxon.get('rank_level')}, name={taxon.get('name')}, common={taxon.get('preferred_common_name')}")
-                print(f"  DEBUG common_ancestor: rank={common_ancestor.get('rank')}, rank_level={common_ancestor.get('rank_level')}, name={common_ancestor.get('name')}, common={common_ancestor.get('preferred_common_name')}")
-
-                # Get the most specific taxon ID (prefer taxon over common_ancestor)
-                # taxon is the specific species prediction, common_ancestor is the group
-                specific_taxon_id = taxon.get('id') if taxon.get('id') else None
                 group_taxon_id = common_ancestor.get('id')
                 
-                # Use specific taxon if available, otherwise fall back to group
-                taxon_id = specific_taxon_id or group_taxon_id
+                # Loop through top results to find a species-level match
+                best_taxon = None
+                best_score = 0
                 
-                # Get taxon rank info
+                for idx, item in enumerate(result['results'][:5]):
+                    t = item.get('taxon', {})
+                    rank_level = t.get('rank_level', 99)
+                    
+                    # Species level is 10 or below, subspecies is 5-9
+                    if rank_level <= 10:
+                        best_taxon = t
+                        best_score = item.get('combined_score', 0)
+                        print(f"  Found species-level: {t.get('name')} (rank_level={rank_level})")
+                        break
+                    elif idx == 0:
+                        # Save first result as fallback
+                        best_taxon = t
+                        best_score = item.get('combined_score', 0)
+                
+                # Use best found taxon (or first result as fallback)
+                taxon = best_taxon if best_taxon else result['results'][0].get('taxon', {})
+                taxon_id = taxon.get('id') or group_taxon_id
                 taxon_rank = taxon.get('rank', '')
                 taxon_rank_level = taxon.get('rank_level', 99)
-                common_rank = common_ancestor.get('rank', '')
-                common_rank_level = common_ancestor.get('rank_level', 99)
                 
-                # Use the more specific one (lower rank level = more specific)
-                if taxon_rank_level <= common_rank_level and taxon.get('preferred_common_name'):
-                    en_name = taxon.get('preferred_common_name')
-                    scientific_name = taxon.get('name', '')
-                else:
-                    en_name = common_ancestor.get('preferred_common_name') or common_ancestor.get('english_common_name')
-                    scientific_name = common_ancestor.get('name', '')
+                # Determine if it's a group or specific species
+                is_group = taxon_rank_level > 10  # More specific than genus
                 
+                en_name = taxon.get('preferred_common_name') or common_ancestor.get('preferred_common_name') or common_ancestor.get('english_common_name')
+                scientific_name = taxon.get('name') or common_ancestor.get('name', '')
                 wiki_url = taxon.get('wikipedia_url') or common_ancestor.get('wikipedia_url', '')
                 photo_url = common_ancestor.get('default_photo', {}).get('medium_url', '')
-
-                # Get Chinese name - try the more specific taxon ID
-                chinese_name = None
-                use_taxon_id = None
                 
-                # Use the more specific one for Chinese name lookup
-                if taxon_rank_level <= common_rank_level and specific_taxon_id:
-                    use_taxon_id = specific_taxon_id
-                elif group_taxon_id:
-                    use_taxon_id = group_taxon_id
+                # Get Chinese name - try API first, then fallback to translation
+                chinese_name = get_chinese_name(taxon_id, token)
+                if not chinese_name:
+                    chinese_name = translate_species(en_name)
                 
-                if use_taxon_id:
-                    chinese_name = get_chinese_name(use_taxon_id, token)
-
-                # Get full taxonomy using common_ancestor
+                # Get full taxonomy
                 taxonomy = get_full_taxonomy(group_taxon_id, common_ancestor)
+                taxonomy['is_group'] = is_group
 
-                print(f"  Extracted: en_name={en_name}, chinese={chinese_name}, scientific={scientific_name}")
+                print(f"  Extracted: en_name={en_name}, chinese={chinese_name}, is_group={is_group}, scientific={scientific_name}")
 
                 return {
                     'source': 'iNaturalist',
                     'en_name': en_name or 'Unknown',
-                    'chinese_name': chinese_name,  # Chinese name from iNaturalist
+                    'chinese_name': chinese_name,
                     'scientific_name': scientific_name,
                     'wiki_url': wiki_url,
                     'taxon_id': taxon_id,
-                    'score': first.get('combined_score', 0),
+                    'score': best_score,
                     'photo_url': photo_url,
                     'taxonomy': taxonomy
                 }
