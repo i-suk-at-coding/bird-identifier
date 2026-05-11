@@ -3,3 +3,4 @@ Flask-Cors==6.0.2
 requests>=2.32.0
 Pillow>=10.0.0
 gunicorn>=21.0.0
+python-dotenv>=1.0.0

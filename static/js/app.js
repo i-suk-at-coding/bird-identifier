@@ -134,7 +134,7 @@ async function identifyBird() {
 
 function renderResults(result) {
     const i18n = result.i18n || {};
-    const confidencePercent = Math.min(Math.round(result.confidence), 100);
+    const confidencePercent = result.confidence ? Math.min(Math.round(result.confidence), 100) : 0;
     const confidenceLabel = confidencePercent >= 70 ? i18n.high_confidence : i18n.low_confidence;
 
     // Use i18n for display name (fallback to English if unknown)

@@ -6,6 +6,13 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from PIL import Image
 from io import BytesIO
 
+# Load .env file for local development
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed
+
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
@@ -397,8 +404,11 @@ def identify():
         image_base64 = base64.b64encode(image_data).decode('utf-8')
 
         # Get API credentials
-        inat_token = os.environ.get('INATURALIST_JWT', '')
-        google_key = os.environ.get('GOOGLE_CLOUD_API_KEY', '')
+        inat_token = os.environ.get('INATURALIST_JWT', '') or os.environ.get('INATURALIST_TOKEN', '')
+        google_key = os.environ.get('GOOGLE_CLOUD_API_KEY', '') or os.environ.get('GOOGLE_API_KEY', '')
+        
+        print(f"DEBUG - INATURALIST_JWT present: {bool(inat_token)}")
+        print(f"DEBUG - GOOGLE_CLOUD_API_KEY present: {bool(google_key)}")
 
         # Check if any API key is configured
         if not inat_token and not google_key:
