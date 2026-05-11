@@ -175,14 +175,25 @@ function renderResults(result) {
         `;
     }
 
-    // Build taxonomy details
-    let taxonomyHtml = '';
+// Build taxonomy details - show group prominently
     const taxonomy = result.taxonomy || {};
-    // Show full taxonomy hierarchy with i18n labels
+    let groupLabel = '';
+    
+    // Build a prominent group label
+    if (taxonomy.genus) {
+        groupLabel = `属: ${taxonomy.genus}`;
+    } else if (taxonomy.family) {
+        groupLabel = `科: ${taxonomy.family}`;
+    } else if (taxonomy.order) {
+        groupLabel = `目: ${taxonomy.order}`;
+    }
+    
+    // Full taxonomy (shown by default)
     if (taxonomy.kingdom || taxonomy.family || taxonomy.order || taxonomy.rank) {
         taxonomyHtml = `
-            <div class="taxonomy-details hidden" id="taxonomy-details">
+            <div class="taxonomy-details" id="taxonomy-details">
                 <h3>${i18n.taxonomy_info || '分类信息'}</h3>
+                ${groupLabel ? `<div class="detail-item group-label"><span class="detail-value">${groupLabel}</span></div>` : ''}
                 ${taxonomy.kingdom ? `<div class="detail-item"><span class="detail-label">${i18n.kingdom || 'Kingdom'}</span><span class="detail-value">${taxonomy.kingdom}</span></div>` : ''}
                 ${taxonomy.phylum ? `<div class="detail-item"><span class="detail-label">${i18n.phylum || 'Phylum'}</span><span class="detail-value">${taxonomy.phylum}</span></div>` : ''}
                 ${taxonomy.class ? `<div class="detail-item"><span class="detail-label">${i18n.class || 'Class'}</span><span class="detail-value">${taxonomy.class}</span></div>` : ''}
@@ -205,9 +216,8 @@ function renderResults(result) {
         rangeMapHtml = `<a class="btn-range" href="${result.rangemap_url}" target="_blank">${i18n.range_map} 🗺️</a>`;
     }
 
-    // Scientific details toggle button
-    const detailsBtnHtml = (taxonomy.kingdom || taxonomy.family || taxonomy.order || taxonomy.rank) ?
-        `<button class="btn-details-toggle" onclick="toggleTaxonomy()">${i18n.show_details} 📋</button>` : '';
+    // Scientific details toggle button (remove since now shown by default)
+    const detailsBtnHtml = '';
 
     resultsContent.innerHTML = `
         <div class="result-main">

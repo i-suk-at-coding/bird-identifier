@@ -585,6 +585,20 @@ footer p {
     font-size: 0.95rem;
 }
 
+.taxonomy-details .group-label {
+    background: rgba(42, 157, 143, 0.15);
+    padding: 10px 15px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    border-left: 3px solid #2A9D8F;
+}
+
+.taxonomy-details .group-label .detail-value {
+    color: #52b788;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
 .btn-new {
     width: 100%;
     max-width: 300px;
