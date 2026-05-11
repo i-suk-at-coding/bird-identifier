@@ -76,7 +76,8 @@ def get_i18n(lang):
 
 @app.route('/')
 def index():
-    return render_template('index.html', i18n=I18N_ZH)
+    api_url = os.environ.get('API_URL', '')
+    return render_template('index.html', i18n=I18N_ZH, api_url=api_url)
 
 
 @app.route('/i18n/<lang>')

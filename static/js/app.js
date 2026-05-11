@@ -1,10 +1,8 @@
 let currentLang = 'zh';
 let selectedFile = null;
 
-// API Configuration - auto-detect local vs production
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
-    ? ''  // Local: use same origin
-    : 'https://bird-identifier-2tvr.onrender.com';  // Production: use deployed backend
+// API Configuration - use env variable API_URL from Flask, fallback to same origin
+const API_BASE_URL = window.API_URL || '';
 
 // DOM Elements
 const uploadZone = document.getElementById('upload-zone');
