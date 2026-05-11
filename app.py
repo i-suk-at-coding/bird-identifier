@@ -117,14 +117,18 @@ def call_inaturalist(image_data, content_type, filename, token):
                 wiki_url = taxon.get('wikipedia_url') or common_ancestor.get('wikipedia_url', '')
                 photo_url = common_ancestor.get('default_photo', {}).get('medium_url', '')
 
+                # Get Chinese common name from iNaturalist API
+                chinese_name = get_chinese_name(taxon_id, token)
+
                 # Get full taxonomy - try v1 API which returns more complete data
                 taxonomy = get_full_taxonomy(taxon_id, common_ancestor)
 
-                print(f"  Extracted: en_name={en_name}, scientific={scientific_name}")
+                print(f"  Extracted: en_name={en_name}, chinese={chinese_name}, scientific={scientific_name}")
 
                 return {
                     'source': 'iNaturalist',
                     'en_name': en_name or 'Unknown',
+                    'chinese_name': chinese_name,  # Chinese name from iNaturalist
                     'scientific_name': scientific_name,
                     'wiki_url': wiki_url,
                     'taxon_id': taxon_id,
@@ -137,6 +141,31 @@ def call_inaturalist(image_data, content_type, filename, token):
         return None
     except Exception as e:
         print(f"iNaturalist exception: {e}")
+        return None
+
+
+def get_chinese_name(taxon_id, token):
+    """Get Chinese common name from iNaturalist API using locale parameter"""
+    if not taxon_id:
+        return None
+    
+    try:
+        # Use v2 API with locale parameter to get Chinese name
+        url = f'https://api.inaturalist.org/v2/taxa/{taxon_id}'
+        params = {'locale': 'zh-CN', 'per_page': 1}
+        headers = {'Authorization': f'Bearer {token}'}
+        
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('results') and len(data['results']) > 0:
+                chinese_name = data['results'][0].get('preferred_common_name')
+                print(f"  Chinese name: {chinese_name}")
+                return chinese_name
+        return None
+    except Exception as e:
+        print(f"  Error getting Chinese name: {e}")
         return None
 
 
@@ -337,12 +366,13 @@ def merge_results(inat_result, google_result, lang):
     taxonomy = {}
 
     if inat_result:
-        zh_name = translate_species(inat_result['en_name'])
+        # Use Chinese name from iNaturalist API if available, otherwise fall back to translation
+        zh_name = inat_result.get('chinese_name') or translate_species(inat_result['en_name'])
         score = min(inat_result['score'] * 100, 100)
         sources.append({
             'source': 'iNaturalist',
             'name': inat_result['en_name'],
-            'zh_name': zh_name,
+            'zh_name': zh_name,  # Use API Chinese name or fallback to translation
             'scientific': inat_result['scientific_name'],
             'score': score,
             'wiki_url': inat_result['wiki_url'],
