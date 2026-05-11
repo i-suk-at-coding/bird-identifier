@@ -310,8 +310,9 @@ main {
 
 .result-photo {
     width: 100%;
-    max-height: 220px;
-    object-fit: cover;
+    max-height: 350px;
+    object-fit: contain;
+    background: rgba(0,0,0,0.3);
     border-radius: 16px;
     margin-bottom: 18px;
     box-shadow: 0 8px 25px rgba(0,0,0,0.3);
