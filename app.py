@@ -162,8 +162,9 @@ def call_inaturalist(image_data, content_type, filename, token):
                     if rank_cn:
                         chinese_name = f"{chinese_name}{rank_cn}"
                 
-                # Get full taxonomy
-                taxonomy = get_full_taxonomy(group_taxon_id, common_ancestor)
+                # Get full taxonomy - use specific taxon if available, otherwise use group
+                taxonomy_taxon_id = taxon.get('id') if taxon.get('id') and taxon_rank_level <= 10 else group_taxon_id
+                taxonomy = get_full_taxonomy(taxonomy_taxon_id, common_ancestor if not taxon.get('id') else taxon)
                 taxonomy['is_group'] = is_group
                 taxonomy['rank'] = rank_display
 
