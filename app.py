@@ -136,13 +136,11 @@ def fix_taxonomy_genus(scientific_name):
 
 
 def get_wikipedia_url(wiki_url, lang):
-    """Convert Wikipedia URL to Chinese version if lang is Chinese"""
-    if not wiki_url or lang != 'zh':
+    """Keep Wikipedia URL in English since Chinese pages often don't exist"""
+    # Most bird species don't have Chinese Wikipedia pages
+    # Keep English Wikipedia to avoid broken links
+    if not wiki_url:
         return wiki_url
-    
-    # Convert English Wikipedia to Chinese Wikipedia
-    if 'en.wikipedia.org' in wiki_url:
-        return wiki_url.replace('en.wikipedia.org', 'zh.wikipedia.org')
     
     return wiki_url
 
