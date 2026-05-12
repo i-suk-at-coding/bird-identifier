@@ -44,6 +44,31 @@ def translate_species(name):
     return name
 
 
+# Known taxonomy updates where iNaturalist uses old names but modern taxonomy changed
+TAXONOMY_OVERRIDES = {
+    'Spinus': 'Chloris',  # Goldfinches moved from Spinus to Chloris
+    'Cardinalis': 'Cardinalis',  # Cardinals (correct)
+    'Cyanocitta': 'Cyanocitta',  # Blue jays (correct)
+    'Sturnus': 'Sturnus',  # Starlings (correct)
+}
+
+
+def fix_taxonomy_genus(scientific_name):
+    """Fix known taxonomy issues where iNaturalist uses old genus names"""
+    if not scientific_name:
+        return scientific_name
+    
+    # Extract genus (first part of scientific name)
+    genus = scientific_name.split()[0] if ' ' in scientific_name else scientific_name
+    
+    if genus in TAXONOMY_OVERRIDES:
+        new_genus = TAXONOMY_OVERRIDES[genus]
+        if new_genus != genus:
+            return scientific_name.replace(genus, new_genus, 1)
+    
+    return scientific_name
+
+
 def extract_taxonomy(common_ancestor):
     """Extract taxonomy from common_ancestor data"""
     if not common_ancestor:
@@ -144,9 +169,8 @@ def call_inaturalist(image_data, content_type, filename, token):
                 
                 # Get scientific name - if group, show genus name, otherwise full species name
                 scientific_name = taxon.get('name') or common_ancestor.get('name', '')
-                if is_group and rank_display:
-                    # Keep genus-level name but it's clear it's a group
-                    pass  # scientific_name already contains genus
+                # Fix known taxonomy issues (Spinus -> Chloris for goldfinches)
+                scientific_name = fix_taxonomy_genus(scientific_name)
                 
                 wiki_url = taxon.get('wikipedia_url') or common_ancestor.get('wikipedia_url', '')
                 photo_url = common_ancestor.get('default_photo', {}).get('medium_url', '')
