@@ -107,7 +107,11 @@ async function identifyBird() {
             body: formData
         });
 
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers.get('content-type'));
+
         const data = await response.json();
+        console.log('Response data:', data);
 
         if (data.success) {
             renderResults(data.result);
@@ -128,6 +132,7 @@ async function identifyBird() {
             showError(errorMsg);
         }
     } catch (error) {
+        console.error('API Error:', error);
         showError(currentLang === 'zh' ? '网络错误，请重试' : 'Network error, please try again');
     }
 }
@@ -137,35 +142,56 @@ function renderResults(result) {
     const confidencePercent = result.confidence ? Math.min(Math.round(result.confidence), 100) : 0;
     const confidenceLabel = confidencePercent >= 70 ? i18n.high_confidence : i18n.low_confidence;
 
-    // Use i18n for display name (fallback to English if unknown)
+    // Use i18n for display name (prefer AI name if available, fallback to English if unknown)
     let displayName = result.display_name;
+    // Use AI name if available
+    if (result.ai_info && result.ai_info.name) {
+        displayName = result.ai_info.name;
+    }
     if (displayName === 'Unknown' || !displayName) {
         displayName = i18n.unknown || 'Unknown Bird';
     }
 
-    // Build photo gallery (uploaded photo + iNaturalist photos)
+    // Build photo gallery (uploaded photo + iNaturalist photos) - swipeable like messaging
     let photoHtml = '';
     const photos = [];
-    // Note: uploaded photo would need to be added from a different source
-    // For now, use iNaturalist photos
+    console.log('photo_url:', result.photo_url);
+    console.log('additional_photos:', result.additional_photos);
+    
     if (result.photo_url) {
         photos.push(result.photo_url);
     }
     if (result.additional_photos && Array.isArray(result.additional_photos)) {
         result.additional_photos.forEach(p => {
-            if (!photos.includes(p)) photos.push(p);
+            if (p && !photos.includes(p)) photos.push(p);
         });
     }
     
+    console.log('Total photos:', photos.length);
+    
     if (photos.length > 0) {
+        const photoCount = photos.length;
         photoHtml = `
             <div class="photo-gallery-section">
-                <div class="photo-gallery-title">${i18n.photo_gallery || '照片集'}</div>
-                <div class="photo-gallery">
-                    ${photos.slice(0, 5).map(url => 
-                        `<img class="gallery-photo" src="${url}" alt="${displayName}">`
+                <div class="photo-gallery-title">${i18n.photo_gallery || '照片集'} (${photoCount})</div>
+                <div class="photo-carousel" id="photo-carousel">
+                    ${photos.map((url, idx) => 
+                        `<div class="photo-slide ${idx === 0 ? 'active' : ''}" data-index="${idx}">
+                            <img src="${url}" alt="${displayName}">
+                        </div>`
                     ).join('')}
                 </div>
+                ${photoCount > 1 ? `
+                <div class="photo-nav">
+                    <button class="photo-nav-btn prev" onclick="changePhoto(-1)">‹</button>
+                    <div class="photo-dots">
+                        ${photos.map((_, idx) => 
+                            `<span class="photo-dot ${idx === 0 ? 'active' : ''}" onclick="goToPhoto(${idx})"></span>`
+                        ).join('')}
+                    </div>
+                    <button class="photo-nav-btn next" onclick="changePhoto(1)">›</button>
+                </div>
+                ` : ''}
             </div>
         `;
     }
@@ -197,25 +223,15 @@ function renderResults(result) {
         `;
     }
 
-// Build taxonomy details - show group prominently
+// Build taxonomy details
     const taxonomy = result.taxonomy || {};
-    let groupLabel = '';
-    
-    // Build a prominent group label
-    if (taxonomy.genus) {
-        groupLabel = `属: ${taxonomy.genus}`;
-    } else if (taxonomy.family) {
-        groupLabel = `科: ${taxonomy.family}`;
-    } else if (taxonomy.order) {
-        groupLabel = `目: ${taxonomy.order}`;
-    }
     
     // Full taxonomy (shown by default)
+    let taxonomyHtml = '';
     if (taxonomy.kingdom || taxonomy.family || taxonomy.order || taxonomy.rank) {
         taxonomyHtml = `
             <div class="taxonomy-details" id="taxonomy-details">
                 <h3>${i18n.taxonomy_info || '分类信息'}</h3>
-                ${groupLabel ? `<div class="detail-item group-label"><span class="detail-value">${groupLabel}</span></div>` : ''}
                 ${taxonomy.kingdom ? `<div class="detail-item"><span class="detail-label">${i18n.kingdom || 'Kingdom'}</span><span class="detail-value">${taxonomy.kingdom}</span></div>` : ''}
                 ${taxonomy.phylum ? `<div class="detail-item"><span class="detail-label">${i18n.phylum || 'Phylum'}</span><span class="detail-value">${taxonomy.phylum}</span></div>` : ''}
                 ${taxonomy.class ? `<div class="detail-item"><span class="detail-label">${i18n.class || 'Class'}</span><span class="detail-value">${taxonomy.class}</span></div>` : ''}
@@ -250,7 +266,8 @@ function renderResults(result) {
             aiOverviewHtml = `
                 <div class="ai-section">
                     <h3>${i18n.ai_overview || 'AI 详细介绍'}</h3>
-                    ${ai.chinese_name ? `<p class="ai-chinese-name"><strong>${i18n.scientific_name || '中文名'}:</strong> ${ai.chinese_name}</p>` : ''}
+                    ${ai.name ? `<p class="ai-name"><strong>${i18n.common_name || '通用名'}:</strong> ${ai.name}</p>` : ''}
+                    ${ai.nickname ? `<p class="ai-nickname"><strong>${i18n.nickname || '昵称'}:</strong> ${ai.nickname}</p>` : ''}
                     ${ai.habitat ? `<p class="ai-habitat"><strong>${i18n.habitat || '栖息地'}:</strong> ${ai.habitat}</p>` : ''}
                     ${ai.diet ? `<p class="ai-diet"><strong>${i18n.diet || '饮食'}:</strong> ${ai.diet}</p>` : ''}
                     ${ai.fun_facts && ai.fun_facts.length > 0 ? `
@@ -266,9 +283,9 @@ function renderResults(result) {
         }
     }
 
-    // Map section - visible by default
+    // Map section - embedded Leaflet map
     let mapHtml = '';
-    const taxonId = result.taxonomy?.taxon_id || result.taxon_id;
+    const taxonId = result.taxonomy?.group_taxon_id || result.taxonomy?.taxon_id || result.taxon_id;
     if (taxonId) {
         mapHtml = `
             <div class="map-section">
@@ -322,22 +339,34 @@ function renderResults(result) {
     }
 }
 
+// Store map instance globally
+let distributionMap = null;
+
 // Map initialization function
 function initDistributionMap(taxonId) {
     const mapContainer = document.getElementById('map-container');
     const mapDiv = document.getElementById('distribution-map');
-    if (!mapDiv || !mapContainer) return;
+    if (!mapDiv || !mapContainer || !taxonId) return;
+    
+    // Get i18n from window
+    const mapI18n = window.currentI18n || {};
+    
+    // Destroy existing map if any
+    if (distributionMap) {
+        distributionMap.remove();
+        distributionMap = null;
+    }
     
     // Remove loading, add fullscreen button
     mapDiv.innerHTML = '';
     const fsBtn = document.createElement('button');
     fsBtn.className = 'map-fullscreen-btn';
-    fsBtn.textContent = i18n.fullscreen || '全屏';
+    fsBtn.textContent = mapI18n.fullscreen || '全屏';
     fsBtn.onclick = () => toggleMapFullscreen(mapContainer);
     mapContainer.appendChild(fsBtn);
     
     // Initialize map centered on world
-    const map = L.map('distribution-map', {
+    distributionMap = L.map('distribution-map', {
         zoomControl: true,
         attributionControl: false
     }).setView([20, 0], 2);
@@ -345,10 +374,10 @@ function initDistributionMap(taxonId) {
     // Add tile layer (OpenStreetMap)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18
-    }).addTo(map);
+    }).addTo(distributionMap);
     
-    // Try to fetch GeoJSON from iNaturalist
-    const geojsonUrl = `https://inaturalist-open-data.s3.amazonaws.com/geomodel/geojsons/latest/${taxonId}.geojson`;
+    // Try to fetch GeoJSON from iNaturalist's taxon range API
+    const geojsonUrl = `https://api.inaturalist.org/v1/taxa/${taxonId}/range`;
     
     fetch(geojsonUrl)
         .then(response => {
@@ -356,16 +385,21 @@ function initDistributionMap(taxonId) {
             return response.json();
         })
         .then(geojson => {
-            if (geojson.features && geojson.features.length > 0) {
-                const layer = L.geoJSON(geojson, {
-                    style: {
-                        fillColor: '#F4A261',
-                        fillOpacity: 0.4,
-                        color: '#F4A261',
-                        weight: 2
-                    }
-                }).addTo(map);
-                map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+            if (geojson && geojson.range) {
+                const rangeGeoJSON = geojson.range;
+                if (rangeGeoJSON.features && rangeGeoJSON.features.length > 0) {
+                    const layer = L.geoJSON(rangeGeoJSON, {
+                        style: {
+                            fillColor: '#F4A261',
+                            fillOpacity: 0.4,
+                            color: '#F4A261',
+                            weight: 2
+                        }
+                    }).addTo(distributionMap);
+                    distributionMap.fitBounds(layer.getBounds(), { padding: [20, 20] });
+                } else {
+                    showMapNoData(mapContainer);
+                }
             } else {
                 showMapNoData(mapContainer);
             }
@@ -376,25 +410,31 @@ function initDistributionMap(taxonId) {
         });
 }
 
-function showMapNoData(container) {
+function showMapNoData(container, isGroupLevel = false) {
     const mapDiv = document.getElementById('distribution-map');
+    const mapI18n = window.currentI18n || {};
     if (mapDiv) {
-        mapDiv.innerHTML = `<div class="map-no-data">${i18n.no_distribution_data || '暂无分布数据'}</div>`;
+        const message = isGroupLevel 
+            ? (mapI18n.map_group_level || 'Distribution map only available for species-level identifications')
+            : (mapI18n.no_distribution_data || '暂无分布数据');
+        mapDiv.innerHTML = `<div class="map-no-data">${message}</div>`;
     }
 }
 
 function toggleMapFullscreen(container) {
     container.classList.toggle('fullscreen');
     const btn = container.querySelector('.map-fullscreen-btn');
+    const mapI18n = window.currentI18n || {};
     if (btn) {
         btn.textContent = container.classList.contains('fullscreen') 
-            ? (i18n.exit_fullscreen || '退出全屏') 
-            : (i18n.fullscreen || '全屏');
+            ? (mapI18n.exit_fullscreen || '退出全屏') 
+            : (mapI18n.fullscreen || '全屏');
     }
     // Invalidate map size when toggling
     setTimeout(() => {
-        const map = L.map('distribution-map');
-        map.invalidateSize();
+        if (distributionMap) {
+            distributionMap.invalidateSize();
+        }
     }, 100);
 }
 
@@ -417,12 +457,14 @@ function updateLanguageButton() {
     }
 }
 
-// Load saved language preference on startup
+// Load saved language preference on startup (default to Chinese)
 const savedLang = localStorage.getItem('birdid-lang');
-if (savedLang) {
+if (savedLang && (savedLang === 'zh' || savedLang === 'en')) {
     currentLang = savedLang;
-    document.documentElement.lang = currentLang;
+} else {
+    currentLang = 'zh';  // Default to Chinese
 }
+document.documentElement.lang = currentLang;
 
 // Set initial button text on page load
 updateLanguageButton();
@@ -507,3 +549,51 @@ window.toggleTaxonomy = function() {
         }
     }
 };
+
+// Photo carousel functions
+let currentPhotoIndex = 0;
+let totalPhotos = 0;
+
+function changePhoto(direction) {
+    const slides = document.querySelectorAll('.photo-slide');
+    if (slides.length === 0) return;
+    
+    totalPhotos = slides.length;
+    currentPhotoIndex = (currentPhotoIndex + direction + totalPhotos) % totalPhotos;
+    updateCarousel();
+}
+
+function goToPhoto(index) {
+    currentPhotoIndex = index;
+    updateCarousel();
+}
+
+function updateCarousel() {
+    const slides = document.querySelectorAll('.photo-slide');
+    const dots = document.querySelectorAll('.photo-dot');
+    
+    slides.forEach((slide, idx) => {
+        slide.classList.toggle('active', idx === currentPhotoIndex);
+    });
+    dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === currentPhotoIndex);
+    });
+}
+
+// Touch swipe support
+let touchStartX = 0;
+let touchEndX = 0;
+
+document.addEventListener('touchstart', e => {
+    if (e.target.closest('.photo-carousel')) {
+        touchStartX = e.changedTouches[0].screenX;
+    }
+});
+
+document.addEventListener('touchend', e => {
+    if (e.target.closest('.photo-carousel')) {
+        touchEndX = e.changedTouches[0].screenX;
+        if (touchStartX - touchEndX > 50) changePhoto(1);
+        if (touchEndX - touchStartX > 50) changePhoto(-1);
+    }
+});

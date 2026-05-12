@@ -146,40 +146,98 @@ def get_wikipedia_url(wiki_url, lang):
 
 
 def get_taxon_photos(taxon_id, token):
-    """Get multiple photos from iNaturalist taxon API"""
+    """Get multiple photos from iNaturalist - prioritizing clearest/best quality"""
     if not taxon_id or not token:
         return []
     
     photos = []
+    seen_urls = set()
+    
     try:
-        url = f'https://api.inaturalist.org/v2/taxa/{taxon_id}'
         headers = {'Authorization': f'Bearer {token}'}
-        response = requests.get(url, headers=headers, timeout=10)
         
-        if response.status_code == 200:
-            data = response.json()
-            results = data.get('results', [])
-            if results and len(results) > 0:
-                taxon_data = results[0]
-                
-                # Get taxon_photos array
-                taxon_photos = taxon_data.get('taxon_photos', [])
-                for tp in taxon_photos[:4]:  # Get up to 4 more photos
-                    photo = tp.get('photo', {})
-                    if photo:
-                        # Get medium size URL
-                        photo_url = photo.get('medium_url') or photo.get('url', '')
-                        if photo_url:
-                            photos.append(photo_url)
-                
-                # Also get default photo if not already included
-                default_photo = taxon_data.get('default_photo', {})
-                if default_photo:
-                    default_url = default_photo.get('medium_url') or default_photo.get('url', '')
-                    if default_url and default_url not in photos:
-                        photos.insert(0, default_url)
+        # Get observations with quality grade=research (most reliable/clear photos)
+        obs_url = f'https://api.inaturalist.org/v1/observations'
+        params = {
+            'taxon_id': taxon_id,
+            'photos': 'true',
+            'quality_grade': 'research,needs_id',  # Prioritize research grade
+            'per_page': 20,
+            'order_by': 'votes',  # Most voted = likely clearest
+            'sort': 'desc'
+        }
+        obs_response = requests.get(obs_url, params=params, headers=headers, timeout=15)
         
-        return photos[:4]  # Return up to 4 photos from API
+        print(f"  Photo API status: {obs_response.status_code}")
+        
+        if obs_response.status_code == 200:
+            obs_data = obs_response.json()
+            obs_results = obs_data.get('results', [])
+            print(f"  Found {len(obs_results)} observations with photos")
+            
+            # Collect photos with their observation info
+            photo_candidates = []
+            for obs in obs_results[:30]:  # Check up to 30 observations
+                for photo in obs.get('photos', []):
+                    photo_url = photo.get('url', '')
+                    if not photo_url or photo_url in seen_urls:
+                        continue
+                    
+                    # Get license info (open licenses = more reliable)
+                    license_code = photo.get('license_code', '')
+                    
+                    # Score: prioritize research grade, more votes, open license
+                    score = 0
+                    if obs.get('quality_grade') == 'research':
+                        score += 10
+                    score += obs.get('votes_count', 0)
+                    if not license_code or license_code in ['cc-by', 'cc-by-nc', 'cc0']:
+                        score += 2
+                    
+                    photo_candidates.append({
+                        'url': photo_url.replace('square', 'medium'),
+                        'score': score,
+                        'obs_id': obs.get('id')
+                    })
+                    seen_urls.add(photo_url)
+            
+            # Sort by score (clearest first)
+            photo_candidates.sort(key=lambda x: x['score'], reverse=True)
+            
+            # Take top 6 clearest photos
+            for p in photo_candidates[:6]:
+                photos.append(p['url'])
+        
+        # If still not enough, get taxon default photos
+        if len(photos) < 3:
+            url = f'https://api.inaturalist.org/v2/taxa/{taxon_id}'
+            response = requests.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('results', [])
+                if results and len(results) > 0:
+                    taxon_data = results[0]
+                    
+                    # Get taxon_photos array
+                    taxon_photos = taxon_data.get('taxon_photos', [])[:6]
+                    for tp in taxon_photos:
+                        photo = tp.get('photo', {})
+                        if photo:
+                            photo_url = photo.get('medium_url') or photo.get('url', '')
+                            if photo_url and photo_url not in seen_urls:
+                                photos.append(photo_url)
+                                seen_urls.add(photo_url)
+                    
+                    # Also get default photo
+                    default_photo = taxon_data.get('default_photo', {})
+                    if default_photo:
+                        default_url = default_photo.get('medium_url') or default_photo.get('url', '')
+                        if default_url and default_url not in seen_urls:
+                            photos.insert(0, default_url)
+        
+        print(f"  Selected {len(photos)} clearest photos")
+        return photos[:8]  # Return up to 8 clearest photos
     except Exception as e:
         print(f"  Error getting taxon photos: {e}")
         return []
@@ -187,17 +245,20 @@ def get_taxon_photos(taxon_id, token):
 
 def get_gemini_info(species_name, lang):
     """Get Chinese name and overview from Google Gemini AI"""
-    import time
+    from google import genai
     
     gemini_key = os.environ.get('GEMINI_API_KEY', '')
     if not gemini_key:
         return None
     
     try:
+        client = genai.Client(api_key=gemini_key)
+        
         # Build prompt based on language
         if lang == 'zh':
             prompt = f"""请提供关于鸟类"{species_name}"的详细信息。返回一个JSON对象，包含以下字段：
-- chinese_name: 中文通用名
+- name: 中文通用名
+- nickname: 常用别名/昵称
 - habitat: 栖息地描述
 - diet: 饮食习性  
 - fun_facts: 3个有趣的事实（数组）
@@ -205,52 +266,27 @@ def get_gemini_info(species_name, lang):
 请用中文回答，只返回JSON，不要其他文字。"""
         else:
             prompt = f"""Provide information about the bird species "{species_name}". Return a JSON object with:
-- chinese_name: Chinese common name
+- name: English common name (not Chinese)
+- nickname: common nickname/alias (e.g., "red bird", "cardinal")
 - habitat: habitat description
 - diet: diet information
 - fun_facts: 3 interesting facts (array)
 
 Return ONLY JSON, no other text."""
         
-        url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}'
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=prompt
+        )
         
-        payload = {
-            'contents': [{
-                'parts': [{'text': prompt}]
-            }],
-            'generationConfig': {
-                'temperature': 0.7,
-                'maxOutputTokens': 1000
-            }
-        }
+        text = response.text
         
-        headers = {'Content-Type': 'application/json'}
-        
-        response = requests.post(url, json=payload, headers=headers, timeout=15)
-        
-        if response.status_code == 429:
-            print("  Gemini API rate limited")
-            return {'error': 'rate_limited'}
-        
-        if response.status_code != 200:
-            print(f"  Gemini API error: {response.status_code}")
-            return None
-        
-        data = response.json()
-        
-        # Extract the response text
-        if 'candidates' in data and len(data['candidates']) > 0:
-            content = data['candidates'][0].get('content', {})
-            parts = content.get('parts', [])
-            if parts:
-                text = parts[0].get('text', '')
-                
-                # Try to parse as JSON
-                import re
-                json_match = re.search(r'\{.*\}', text, re.DOTALL)
-                if json_match:
-                    result = json.loads(json_match.group())
-                    return result
+        # Try to parse as JSON
+        import re
+        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            return result
         
         return None
         
@@ -376,11 +412,21 @@ def call_inaturalist(image_data, content_type, filename, token):
                 
                 photo_url = common_ancestor.get('default_photo', {}).get('medium_url', '')
                 
-                # Get additional photos from iNaturalist taxon API
-                additional_photos = get_taxon_photos(group_taxon_id, token)
+                # Get additional photos directly
+                try:
+                    additional_photos = get_taxon_photos(group_taxon_id, token) or []
+                    print(f"  Additional photos: {len(additional_photos)}")
+                except Exception as e:
+                    print(f"  Error getting photos: {e}")
+                    additional_photos = []
                 
-                # Get Chinese name - try API first, then fallback to translation
+                # Get Chinese name
                 chinese_name = get_chinese_name(taxon_id, token)
+                
+                # Get taxonomy
+                taxonomy = get_full_taxonomy(group_taxon_id, common_ancestor)
+                
+                # Fallback for Chinese name if API returned None
                 if not chinese_name:
                     chinese_name = translate_species(en_name)
                 
@@ -390,10 +436,10 @@ def call_inaturalist(image_data, content_type, filename, token):
                     if rank_cn:
                         chinese_name = f"{chinese_name}{rank_cn}"
                 
-                # Get full taxonomy - always use common_ancestor as it has ancestor_ids needed for hierarchy
-                taxonomy = get_full_taxonomy(group_taxon_id, common_ancestor)
+                # Set taxonomy metadata
                 taxonomy['is_group'] = is_group
                 taxonomy['rank'] = rank_display
+                taxonomy['group_taxon_id'] = group_taxon_id
 
                 print(f"  Extracted: en_name={en_name}, chinese={chinese_name}, is_group={is_group}, scientific={scientific_name}")
 
@@ -686,8 +732,42 @@ def merge_results(inat_result, google_result, lang):
     final['taxonomy'] = taxonomy
     final['rangemap_url'] = taxonomy.get('rangemap_url', '')
     final['observations_count'] = taxonomy.get('observations_count', 0)
+    
+    # Add additional data from iNaturalist
+    if inat_result:
+        final['photo_url'] = inat_result.get('photo_url', '')
+        final['additional_photos'] = inat_result.get('additional_photos', [])
 
     return final
+
+
+@app.route('/api/test-gemini', methods=['GET'])
+def test_gemini():
+    """Test if Gemini API key is configured and working"""
+    from google import genai
+    
+    gemini_key = os.environ.get('GEMINI_API_KEY', '')
+    
+    if not gemini_key:
+        return jsonify({'status': 'error', 'message': 'GEMINI_API_KEY not set'})
+    
+    # Mask the key for display
+    masked = gemini_key[:8] + '...' + gemini_key[-4:] if len(gemini_key) > 12 else '***'
+    
+    # Try a simple test call using new SDK
+    try:
+        client = genai.Client(api_key=gemini_key)
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents='Say "OK" in one word'
+        )
+        
+        return jsonify({'status': 'success', 'key_masked': masked, 'message': 'API key works!', 'response': response.text})
+    except Exception as e:
+        error_msg = str(e)
+        if '429' in error_msg or 'rate_limit' in error_msg.lower():
+            return jsonify({'status': 'rate_limited', 'key_masked': masked, 'message': 'API quota exceeded'})
+        return jsonify({'status': 'error', 'key_masked': masked, 'message': error_msg})
 
 
 @app.route('/api/identify', methods=['POST'])
@@ -774,6 +854,7 @@ def identify():
                     'taxonomy': merged.get('taxonomy', {}),
                     'rangemap_url': merged.get('rangemap_url', ''),
                     'observations_count': merged.get('observations_count', 0),
+                    'additional_photos': merged.get('additional_photos', []),
                     'ai_info': ai_info,
                     'i18n': i18n
                 }

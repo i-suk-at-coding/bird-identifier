@@ -45,6 +45,8 @@
   "photo_gallery": "照片集",
   "distribution_map": "分布地图",
   "no_distribution_data": "暂无分布数据",
+  "map_group_level": "分布地图仅在物种级别识别时可用",
+  "view_range_map": "查看分布地图",
   "loading_map": "加载地图中...",
   "fullscreen": "全屏",
   "exit_fullscreen": "退出全屏",
@@ -52,5 +54,7 @@
   "ai_overview_unavailable": "AI 详细介绍暂时不可用（API 达到上限）",
   "habitat": "栖息地",
   "diet": "饮食",
-  "fun_facts": "有趣的事实"
+  "fun_facts": "有趣的事实",
+  "common_name": "通用名",
+  "nickname": "昵称"
 }

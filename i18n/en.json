@@ -45,6 +45,8 @@
   "photo_gallery": "Photo Gallery",
   "distribution_map": "Distribution Map",
   "no_distribution_data": "No distribution data available",
+  "map_group_level": "Distribution map only available for species-level identifications",
+  "view_range_map": "View Distribution Map",
   "loading_map": "Loading map...",
   "fullscreen": "Fullscreen",
   "exit_fullscreen": "Exit fullscreen",
@@ -52,5 +54,7 @@
   "ai_overview_unavailable": "AI Overview unavailable (API limit reached)",
   "habitat": "Habitat",
   "diet": "Diet",
-  "fun_facts": "Fun Facts"
+  "fun_facts": "Fun Facts",
+  "common_name": "Common Name",
+  "nickname": "Nickname"
 }
