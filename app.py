@@ -46,10 +46,76 @@ def translate_species(name):
 
 # Known taxonomy updates where iNaturalist uses old names but modern taxonomy changed
 TAXONOMY_OVERRIDES = {
-    'Spinus': 'Chloris',  # Goldfinches moved from Spinus to Chloris
+    # Finches & Goldfinches
+    'Spinus': 'Chloris',  # Goldfinches, siskins - Spinus to Chloris
+    'Carduelis': 'Carduelis',  # Old world finches (some still in Carduelis)
+    'Serinus': 'Serinus',  # Canaries, serins
+    
+    # Cardinals & Buntings
     'Cardinalis': 'Cardinalis',  # Cardinals (correct)
+    'Pheucticus': 'Pheucticus',  # Grosbeaks (correct)
+    'Passerina': 'Passerina',  # Buntings (correct)
+    'Spiza': 'Spiza',  # Dickcissel (correct)
+    
+    # Jays & Crows
     'Cyanocitta': 'Cyanocitta',  # Blue jays (correct)
+    'Cyanocorax': 'Cyanocorax',  # New world jays (correct)
+    'Corvus': 'Corvus',  # Crows, ravens (correct)
+    
+    # Blackbirds & Orioles
+    'Icterus': 'Icterus',  # Orioles (correct)
+    'Agelaius': 'Agelaius',  # Blackbirds (correct)
+    'Molothrus': 'Molothrus',  # Cowbirds (correct)
+    'Quiscalus': 'Quiscalus',  # Grackles (correct)
+    'Sturnella': 'Sturnella',  # Meadowlarks (correct)
+    
+    # Starlings & Mynas
     'Sturnus': 'Sturnus',  # Starlings (correct)
+    'Acridotheres': 'Acridotheres',  # Mynas (correct)
+    
+    # Sparrows & Juncos
+    'Junco': 'Junco',  # Juncos (correct)
+    'Spizella': 'Spizella',  # Sparrows (correct)
+    'Melozone': 'Melozone',  # Towhees (correct)
+    'Pipilo': 'Pipilo',  # Towhees (correct)
+    
+    # Thrushes
+    'Turdus': 'Turdus',  # Thrushes (correct)
+    'Catharus': 'Catharus',  # Catharus thrushes (correct)
+    
+    # Wrens
+    'Troglodytes': 'Troglodytes',  # Wrens (correct)
+    'Thryomanes': 'Thryomanes',  # Bewick's wren (correct)
+    
+    # Kingfishers
+    'Megaceryle': 'Megaceryle',  # Large kingfishers (correct)
+    'Chloroceryle': 'Chloroceryle',  # Green kingfishers (correct)
+    
+    # Herons & Egrets
+    'Ardea': 'Ardea',  # Large herons (correct)
+    'Egretta': 'Egretta',  # Egrets (correct)
+    'Bubulcus': 'Bubulcus',  # Cattle egret (correct)
+    'Nycticorax': 'Nycticorax',  # Night herons (correct)
+    
+    # Hawks & Eagles
+    'Buteo': 'Buteo',  # Buteo hawks (correct)
+    'Accipiter': 'Accipiter',  # Accipiter hawks (correct)
+    'Haliaeetus': 'Haliaeetus',  # Sea eagles (correct)
+    
+    # Owls
+    'Bubo': 'Bubo',  # Large owls (correct)
+    'Strix': 'Strix',  # Earless owls (correct)
+    'Megascops': 'Megascops',  # Screech owls (correct)
+    
+    # Woodpeckers
+    'Dryocopus': 'Dryocopus',  # Woodpeckers (correct)
+    'Melanerpes': 'Melanerpes',  # Woodpeckers (correct)
+    'Picus': 'Picus',  # Green woodpeckers (correct)
+    
+    # Hummingbirds
+    'Archilochus': 'Archilochus',  # Hummingbirds (correct)
+    'Selasphorus': 'Selasphorus',  # Hummingbirds (correct)
+    'Amazilia': 'Amazilia',  # Hummingbirds (correct)
 }
 
 
