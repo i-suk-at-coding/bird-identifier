@@ -41,5 +41,11 @@
   "taxonomy_info": "Taxonomy",
   "distribution": "Distribution",
   "more_info": "More Info",
-  "view_on_inaturalist": "View on iNaturalist →"
+  "view_on_inaturalist": "View on iNaturalist →",
+  "photo_gallery": "Photo Gallery",
+  "distribution_map": "Distribution Map",
+  "no_distribution_data": "No distribution data available",
+  "loading_map": "Loading map...",
+  "fullscreen": "Fullscreen",
+  "exit_fullscreen": "Exit fullscreen"
 }
