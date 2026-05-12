@@ -137,8 +137,17 @@ def call_inaturalist(image_data, content_type, filename, token):
                 # Determine if it's a group or specific species
                 is_group = taxon_rank_level > 10  # More specific than genus
                 
+                # Determine rank for display
+                rank_display = taxon.get('rank', common_ancestor.get('rank', ''))
+                
                 en_name = taxon.get('preferred_common_name') or common_ancestor.get('preferred_common_name') or common_ancestor.get('english_common_name')
+                
+                # Get scientific name - if group, show genus name, otherwise full species name
                 scientific_name = taxon.get('name') or common_ancestor.get('name', '')
+                if is_group and rank_display:
+                    # Keep genus-level name but it's clear it's a group
+                    pass  # scientific_name already contains genus
+                
                 wiki_url = taxon.get('wikipedia_url') or common_ancestor.get('wikipedia_url', '')
                 photo_url = common_ancestor.get('default_photo', {}).get('medium_url', '')
                 
@@ -147,9 +156,16 @@ def call_inaturalist(image_data, content_type, filename, token):
                 if not chinese_name:
                     chinese_name = translate_species(en_name)
                 
+                # If it's a group (genus/family level), append rank indicator
+                if is_group and chinese_name:
+                    rank_cn = {'genus': '属', 'family': '科', 'order': '目', 'subfamily': '亚科'}.get(rank_display, '')
+                    if rank_cn:
+                        chinese_name = f"{chinese_name}{rank_cn}"
+                
                 # Get full taxonomy
                 taxonomy = get_full_taxonomy(group_taxon_id, common_ancestor)
                 taxonomy['is_group'] = is_group
+                taxonomy['rank'] = rank_display
 
                 print(f"  Extracted: en_name={en_name}, chinese={chinese_name}, is_group={is_group}, scientific={scientific_name}")
 
