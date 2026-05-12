@@ -21,9 +21,9 @@ body {
 }
 
 .container {
-    max-width: 500px;
+    max-width: 100%;
     margin: 0 auto;
-    padding: 0 20px;
+    padding: 0 16px;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -614,4 +614,120 @@ footer p {
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* Photo Gallery */
+.photo-gallery {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 0 0 16px 0;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+
+.photo-gallery::-webkit-scrollbar {
+    display: none;
+}
+
+.photo-gallery .gallery-photo {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 60vh;
+    border-radius: 16px;
+    object-fit: contain;
+    scroll-snap-align: center;
+    background: rgba(0,0,0,0.3);
+}
+
+.photo-gallery .gallery-photo:first-child {
+    width: 100%;
+}
+
+.photo-gallery-section {
+    margin-bottom: 20px;
+}
+
+.photo-gallery-title {
+    font-size: 1rem;
+    color: #F4A261;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+/* Map */
+.map-container {
+    height: 350px;
+    border-radius: 16px;
+    margin: 20px 0;
+    overflow: hidden;
+    position: relative;
+    background: rgba(0,0,0,0.3);
+}
+
+.map-container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    margin: 0;
+    border-radius: 0;
+}
+
+.map-fullscreen-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+    background: rgba(11, 26, 46, 0.9);
+    color: #F4A261;
+    border: 1px solid #F4A261;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.map-fullscreen-btn:hover {
+    background: #F4A261;
+    color: #0B1A2E;
+}
+
+.map-loading, .map-no-data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #888;
+    font-size: 0.95rem;
+}
+
+#distribution-map {
+    height: 100%;
+    width: 100%;
+    border-radius: 16px;
+}
+
+/* Results section wider */
+#results-content {
+    background: rgba(255,255,255,0.06);
+    border-radius: 20px;
+    padding: 24px;
+    margin: 0 -16px 20px -16px;
+    text-align: left;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.08);
+    width: calc(100% + 32px);
+}
+
+.result-name {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #F4A261;
+    margin-bottom: 8px;
 }

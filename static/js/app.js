@@ -143,9 +143,31 @@ function renderResults(result) {
         displayName = i18n.unknown || 'Unknown Bird';
     }
 
+    // Build photo gallery (uploaded photo + iNaturalist photos)
     let photoHtml = '';
+    const photos = [];
+    // Note: uploaded photo would need to be added from a different source
+    // For now, use iNaturalist photos
     if (result.photo_url) {
-        photoHtml = `<img class="result-photo" src="${result.photo_url}" alt="${displayName}">`;
+        photos.push(result.photo_url);
+    }
+    if (result.additional_photos && Array.isArray(result.additional_photos)) {
+        result.additional_photos.forEach(p => {
+            if (!photos.includes(p)) photos.push(p);
+        });
+    }
+    
+    if (photos.length > 0) {
+        photoHtml = `
+            <div class="photo-gallery-section">
+                <div class="photo-gallery-title">${i18n.photo_gallery || '照片集'}</div>
+                <div class="photo-gallery">
+                    ${photos.slice(0, 5).map(url => 
+                        `<img class="gallery-photo" src="${url}" alt="${displayName}">`
+                    ).join('')}
+                </div>
+            </div>
+        `;
     }
 
     let wikiHtml = '';
@@ -210,10 +232,22 @@ function renderResults(result) {
         `;
     }
 
-    // Range map button
+    // Range map button (old - now using embedded map)
     let rangeMapHtml = '';
-    if (result.rangemap_url) {
-        rangeMapHtml = `<a class="btn-range" href="${result.rangemap_url}" target="_blank">${i18n.range_map} 🗺️</a>`;
+
+    // Map section - visible by default
+    let mapHtml = '';
+    const taxonId = result.taxonomy?.taxon_id || result.taxon_id;
+    if (taxonId) {
+        mapHtml = `
+            <div class="map-section">
+                <h3 class="map-title">${i18n.distribution_map || '分布地图'}</h3>
+                <div class="map-container" id="map-container">
+                    <div class="map-loading">${i18n.loading_map || '加载地图中...'}</div>
+                    <div id="distribution-map"></div>
+                </div>
+            </div>
+        `;
     }
 
     // Scientific details toggle button (remove since now shown by default)
@@ -244,11 +278,92 @@ function renderResults(result) {
         </div>
         ${detailsBtnHtml}
         ${taxonomyHtml}
-        ${rangeMapHtml}
+        ${mapHtml}
         ${wikiHtml}
     `;
 
     showSection(resultsSection);
+    
+    // Initialize map if taxon ID exists
+    if (taxonId) {
+        initDistributionMap(taxonId);
+    }
+}
+
+// Map initialization function
+function initDistributionMap(taxonId) {
+    const mapContainer = document.getElementById('map-container');
+    const mapDiv = document.getElementById('distribution-map');
+    if (!mapDiv || !mapContainer) return;
+    
+    // Remove loading, add fullscreen button
+    mapDiv.innerHTML = '';
+    const fsBtn = document.createElement('button');
+    fsBtn.className = 'map-fullscreen-btn';
+    fsBtn.textContent = i18n.fullscreen || '全屏';
+    fsBtn.onclick = () => toggleMapFullscreen(mapContainer);
+    mapContainer.appendChild(fsBtn);
+    
+    // Initialize map centered on world
+    const map = L.map('distribution-map', {
+        zoomControl: true,
+        attributionControl: false
+    }).setView([20, 0], 2);
+    
+    // Add tile layer (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18
+    }).addTo(map);
+    
+    // Try to fetch GeoJSON from iNaturalist
+    const geojsonUrl = `https://inaturalist-open-data.s3.amazonaws.com/geomodel/geojsons/latest/${taxonId}.geojson`;
+    
+    fetch(geojsonUrl)
+        .then(response => {
+            if (!response.ok) throw new Error('No data');
+            return response.json();
+        })
+        .then(geojson => {
+            if (geojson.features && geojson.features.length > 0) {
+                const layer = L.geoJSON(geojson, {
+                    style: {
+                        fillColor: '#F4A261',
+                        fillOpacity: 0.4,
+                        color: '#F4A261',
+                        weight: 2
+                    }
+                }).addTo(map);
+                map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+            } else {
+                showMapNoData(mapContainer);
+            }
+        })
+        .catch(err => {
+            console.log('Map data not available:', err);
+            showMapNoData(mapContainer);
+        });
+}
+
+function showMapNoData(container) {
+    const mapDiv = document.getElementById('distribution-map');
+    if (mapDiv) {
+        mapDiv.innerHTML = `<div class="map-no-data">${i18n.no_distribution_data || '暂无分布数据'}</div>`;
+    }
+}
+
+function toggleMapFullscreen(container) {
+    container.classList.toggle('fullscreen');
+    const btn = container.querySelector('.map-fullscreen-btn');
+    if (btn) {
+        btn.textContent = container.classList.contains('fullscreen') 
+            ? (i18n.exit_fullscreen || '退出全屏') 
+            : (i18n.fullscreen || '全屏');
+    }
+    // Invalidate map size when toggling
+    setTimeout(() => {
+        const map = L.map('distribution-map');
+        map.invalidateSize();
+    }, 100);
 }
 
 function resetToUpload() {

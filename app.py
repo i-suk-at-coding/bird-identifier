@@ -145,6 +145,46 @@ def get_wikipedia_url(wiki_url, lang):
     return wiki_url
 
 
+def get_taxon_photos(taxon_id, token):
+    """Get multiple photos from iNaturalist taxon API"""
+    if not taxon_id or not token:
+        return []
+    
+    photos = []
+    try:
+        url = f'https://api.inaturalist.org/v2/taxa/{taxon_id}'
+        headers = {'Authorization': f'Bearer {token}'}
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get('results', [])
+            if results and len(results) > 0:
+                taxon_data = results[0]
+                
+                # Get taxon_photos array
+                taxon_photos = taxon_data.get('taxon_photos', [])
+                for tp in taxon_photos[:4]:  # Get up to 4 more photos
+                    photo = tp.get('photo', {})
+                    if photo:
+                        # Get medium size URL
+                        photo_url = photo.get('medium_url') or photo.get('url', '')
+                        if photo_url:
+                            photos.append(photo_url)
+                
+                # Also get default photo if not already included
+                default_photo = taxon_data.get('default_photo', {})
+                if default_photo:
+                    default_url = default_photo.get('medium_url') or default_photo.get('url', '')
+                    if default_url and default_url not in photos:
+                        photos.insert(0, default_url)
+        
+        return photos[:4]  # Return up to 4 photos from API
+    except Exception as e:
+        print(f"  Error getting taxon photos: {e}")
+        return []
+
+
 def extract_taxonomy(common_ancestor):
     """Extract taxonomy from common_ancestor data"""
     if not common_ancestor:
@@ -262,6 +302,9 @@ def call_inaturalist(image_data, content_type, filename, token):
                 
                 photo_url = common_ancestor.get('default_photo', {}).get('medium_url', '')
                 
+                # Get additional photos from iNaturalist taxon API
+                additional_photos = get_taxon_photos(group_taxon_id, token)
+                
                 # Get Chinese name - try API first, then fallback to translation
                 chinese_name = get_chinese_name(taxon_id, token)
                 if not chinese_name:
@@ -273,9 +316,8 @@ def call_inaturalist(image_data, content_type, filename, token):
                     if rank_cn:
                         chinese_name = f"{chinese_name}{rank_cn}"
                 
-                # Get full taxonomy - use specific taxon if available, otherwise use group
-                taxonomy_taxon_id = taxon.get('id') if taxon.get('id') and taxon_rank_level <= 10 else group_taxon_id
-                taxonomy = get_full_taxonomy(taxonomy_taxon_id, common_ancestor if not taxon.get('id') else taxon)
+                # Get full taxonomy - always use common_ancestor as it has ancestor_ids needed for hierarchy
+                taxonomy = get_full_taxonomy(group_taxon_id, common_ancestor)
                 taxonomy['is_group'] = is_group
                 taxonomy['rank'] = rank_display
 
@@ -290,6 +332,7 @@ def call_inaturalist(image_data, content_type, filename, token):
                     'taxon_id': taxon_id,
                     'score': best_score,
                     'photo_url': photo_url,
+                    'additional_photos': additional_photos,
                     'taxonomy': taxonomy
                 }
             else:

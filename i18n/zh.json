@@ -41,5 +41,11 @@
   "taxonomy_info": "分类信息",
   "distribution": "分布",
   "more_info": "更多信息",
-  "view_on_inaturalist": "在 iNaturalist 上查看"
+  "view_on_inaturalist": "在 iNaturalist 上查看",
+  "photo_gallery": "照片集",
+  "distribution_map": "分布地图",
+  "no_distribution_data": "暂无分布数据",
+  "loading_map": "加载地图中...",
+  "fullscreen": "全屏",
+  "exit_fullscreen": "退出全屏"
 }
