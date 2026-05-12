@@ -250,7 +250,18 @@ def call_inaturalist(image_data, content_type, filename, token):
                 # Fix known taxonomy issues (Spinus -> Chloris for goldfinches)
                 scientific_name = fix_taxonomy_genus(scientific_name)
                 
-                wiki_url = taxon.get('wikipedia_url') or common_ancestor.get('wikipedia_url', '')
+                # Try to get Wikipedia URL from species-level result, fall back to group
+                wiki_url = taxon.get('wikipedia_url')
+                if not wiki_url:
+                    # Look through results for a species-level Wikipedia URL
+                    for item in result['results'][:5]:
+                        t = item.get('taxon', {})
+                        if t.get('rank_level', 99) <= 10 and t.get('wikipedia_url'):
+                            wiki_url = t.get('wikipedia_url')
+                            break
+                if not wiki_url:
+                    wiki_url = common_ancestor.get('wikipedia_url', '')
+                
                 photo_url = common_ancestor.get('default_photo', {}).get('medium_url', '')
                 
                 # Get Chinese name - try API first, then fallback to translation
