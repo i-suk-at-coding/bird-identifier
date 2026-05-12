@@ -69,6 +69,18 @@ def fix_taxonomy_genus(scientific_name):
     return scientific_name
 
 
+def get_wikipedia_url(wiki_url, lang):
+    """Convert Wikipedia URL to Chinese version if lang is Chinese"""
+    if not wiki_url or lang != 'zh':
+        return wiki_url
+    
+    # Convert English Wikipedia to Chinese Wikipedia
+    if 'en.wikipedia.org' in wiki_url:
+        return wiki_url.replace('en.wikipedia.org', 'zh.wikipedia.org')
+    
+    return wiki_url
+
+
 def extract_taxonomy(common_ancestor):
     """Extract taxonomy from common_ancestor data"""
     if not common_ancestor:
@@ -557,7 +569,7 @@ def identify():
                     'zh_name': merged.get('zh_name', ''),
                     'scientific_name': merged.get('scientific', ''),
                     'confidence': merged['combined_score'],
-                    'wikipedia_url': merged.get('wiki_url', ''),
+                    'wikipedia_url': get_wikipedia_url(merged.get('wiki_url', ''), lang),
                     'photo_url': merged.get('photo_url', ''),
                     'sources': merged.get('sources', []),
                     'agreement': merged.get('agreement', True),
