@@ -47,5 +47,10 @@
   "no_distribution_data": "No distribution data available",
   "loading_map": "Loading map...",
   "fullscreen": "Fullscreen",
-  "exit_fullscreen": "Exit fullscreen"
+  "exit_fullscreen": "Exit fullscreen",
+  "ai_overview": "AI Overview",
+  "ai_overview_unavailable": "AI Overview unavailable (API limit reached)",
+  "habitat": "Habitat",
+  "diet": "Diet",
+  "fun_facts": "Fun Facts"
 }

@@ -235,6 +235,37 @@ function renderResults(result) {
     // Range map button (old - now using embedded map)
     let rangeMapHtml = '';
 
+    // AI Overview section
+    let aiOverviewHtml = '';
+    if (result.ai_info) {
+        if (result.ai_info.error === 'rate_limited') {
+            aiOverviewHtml = `
+                <div class="ai-section">
+                    <h3>${i18n.ai_overview || 'AI 详细介绍'}</h3>
+                    <p class="ai-unavailable">${i18n.ai_overview_unavailable || 'AI 详细介绍暂时不可用（API 达到上限）'}</p>
+                </div>
+            `;
+        } else {
+            const ai = result.ai_info;
+            aiOverviewHtml = `
+                <div class="ai-section">
+                    <h3>${i18n.ai_overview || 'AI 详细介绍'}</h3>
+                    ${ai.chinese_name ? `<p class="ai-chinese-name"><strong>${i18n.scientific_name || '中文名'}:</strong> ${ai.chinese_name}</p>` : ''}
+                    ${ai.habitat ? `<p class="ai-habitat"><strong>${i18n.habitat || '栖息地'}:</strong> ${ai.habitat}</p>` : ''}
+                    ${ai.diet ? `<p class="ai-diet"><strong>${i18n.diet || '饮食'}:</strong> ${ai.diet}</p>` : ''}
+                    ${ai.fun_facts && ai.fun_facts.length > 0 ? `
+                        <div class="ai-facts">
+                            <strong>${i18n.fun_facts || '有趣的事实'}:</strong>
+                            <ul>
+                                ${ai.fun_facts.map(fact => `<li>${fact}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+    }
+
     // Map section - visible by default
     let mapHtml = '';
     const taxonId = result.taxonomy?.taxon_id || result.taxon_id;
@@ -278,6 +309,7 @@ function renderResults(result) {
         </div>
         ${detailsBtnHtml}
         ${taxonomyHtml}
+        ${aiOverviewHtml}
         ${mapHtml}
         ${wikiHtml}
     `;

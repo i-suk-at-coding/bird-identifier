@@ -47,5 +47,10 @@
   "no_distribution_data": "暂无分布数据",
   "loading_map": "加载地图中...",
   "fullscreen": "全屏",
-  "exit_fullscreen": "退出全屏"
+  "exit_fullscreen": "退出全屏",
+  "ai_overview": "AI 详细介绍",
+  "ai_overview_unavailable": "AI 详细介绍暂时不可用（API 达到上限）",
+  "habitat": "栖息地",
+  "diet": "饮食",
+  "fun_facts": "有趣的事实"
 }

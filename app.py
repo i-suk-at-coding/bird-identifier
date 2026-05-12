@@ -185,6 +185,80 @@ def get_taxon_photos(taxon_id, token):
         return []
 
 
+def get_gemini_info(species_name, lang):
+    """Get Chinese name and overview from Google Gemini AI"""
+    import time
+    
+    gemini_key = os.environ.get('GEMINI_API_KEY', '')
+    if not gemini_key:
+        return None
+    
+    try:
+        # Build prompt based on language
+        if lang == 'zh':
+            prompt = f"""请提供关于鸟类"{species_name}"的详细信息。返回一个JSON对象，包含以下字段：
+- chinese_name: 中文通用名
+- habitat: 栖息地描述
+- diet: 饮食习性  
+- fun_facts: 3个有趣的事实（数组）
+
+请用中文回答，只返回JSON，不要其他文字。"""
+        else:
+            prompt = f"""Provide information about the bird species "{species_name}". Return a JSON object with:
+- chinese_name: Chinese common name
+- habitat: habitat description
+- diet: diet information
+- fun_facts: 3 interesting facts (array)
+
+Return ONLY JSON, no other text."""
+        
+        url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}'
+        
+        payload = {
+            'contents': [{
+                'parts': [{'text': prompt}]
+            }],
+            'generationConfig': {
+                'temperature': 0.7,
+                'maxOutputTokens': 1000
+            }
+        }
+        
+        headers = {'Content-Type': 'application/json'}
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        
+        if response.status_code == 429:
+            print("  Gemini API rate limited")
+            return {'error': 'rate_limited'}
+        
+        if response.status_code != 200:
+            print(f"  Gemini API error: {response.status_code}")
+            return None
+        
+        data = response.json()
+        
+        # Extract the response text
+        if 'candidates' in data and len(data['candidates']) > 0:
+            content = data['candidates'][0].get('content', {})
+            parts = content.get('parts', [])
+            if parts:
+                text = parts[0].get('text', '')
+                
+                # Try to parse as JSON
+                import re
+                json_match = re.search(r'\{.*\}', text, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group())
+                    return result
+        
+        return None
+        
+    except Exception as e:
+        print(f"  Gemini API exception: {e}")
+        return None
+
+
 def extract_taxonomy(common_ancestor):
     """Extract taxonomy from common_ancestor data"""
     if not common_ancestor:
@@ -678,6 +752,12 @@ def identify():
                     'error': i18n.get('no_result', 'Could not identify this bird. Please try a clearer photo.'),
                     'i18n': i18n
                 })
+            
+            # Get AI overview from Gemini
+            ai_info = None
+            species_for_ai = merged.get('scientific', '') or merged.get('zh_name', '') or merged['name']
+            if species_for_ai:
+                ai_info = get_gemini_info(species_for_ai, lang)
 
             return jsonify({
                 'success': True,
@@ -694,6 +774,7 @@ def identify():
                     'taxonomy': merged.get('taxonomy', {}),
                     'rangemap_url': merged.get('rangemap_url', ''),
                     'observations_count': merged.get('observations_count', 0),
+                    'ai_info': ai_info,
                     'i18n': i18n
                 }
             })
