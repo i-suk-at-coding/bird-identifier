@@ -300,7 +300,7 @@ Return ONLY JSON, no other text."""
     openrouter_key = os.environ.get('OPENROUTER_API_KEY', '')
     if openrouter_key:
         try:
-            openrouter_model = os.environ.get('OPENROUTER_MODEL', 'openai/gpt-4o-mini')
+            openrouter_model = os.environ.get('OPENROUTER_MODEL', 'meta-llama/llama-3.1-8b-instruct')
             payload = {
                 'model': openrouter_model,
                 'messages': [
