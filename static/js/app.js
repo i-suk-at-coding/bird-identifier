@@ -142,11 +142,15 @@ function renderResults(result) {
     const confidencePercent = result.confidence ? Math.min(Math.round(result.confidence), 100) : 0;
     const confidenceLabel = confidencePercent >= 70 ? i18n.high_confidence : i18n.low_confidence;
 
-    // Use i18n for display name (prefer AI name if available, fallback to English if unknown)
-    let displayName = result.display_name;
-    // Use AI name if available
+    // Always prefer English name from iNaturalist, fallback to AI if available
+    let displayName = result.en_name || result.display_name || '';
+    // Use AI name only if it's in English (check for non-Chinese characters)
     if (result.ai_info && result.ai_info.name) {
-        displayName = result.ai_info.name;
+        const aiName = result.ai_info.name;
+        // Only use AI name if it contains ASCII letters (likely English)
+        if (/[a-zA-Z]/.test(aiName)) {
+            displayName = aiName;
+        }
     }
     if (displayName === 'Unknown' || !displayName) {
         displayName = i18n.unknown || 'Unknown Bird';
@@ -206,6 +210,7 @@ function renderResults(result) {
     if (result.sources && result.sources.length > 0) {
         const isAgreement = result.agreement;
         const agreeMsg = isAgreement ? i18n.sources_agree : i18n.sources_disagree;
+        // Show only English names in source list
         sourcesHtml = `
             <div class="sources-comparison">
                 <div class="sources-header ${isAgreement ? 'agree' : 'disagree'}">
@@ -215,7 +220,6 @@ function renderResults(result) {
                     <div class="source-row">
                         <span class="source-name">${s.source}</span>
                         <span class="source-name-en">${s.name}</span>
-                        <span class="source-name-zh">${s.zh_name || ''}</span>
                         <span class="source-score">${Math.round(s.score)}%</span>
                     </div>
                 `).join('')}
