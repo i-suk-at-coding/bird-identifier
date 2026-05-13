@@ -143,16 +143,24 @@ function renderResults(result) {
     const confidenceLabel = confidencePercent >= 70 ? i18n.high_confidence : i18n.low_confidence;
 
     let displayName;
-    if (currentLang === 'zh') {
-        displayName = result.display_name || result.en_name || '';
-    } else {
-        displayName = result.en_name || result.display_name || '';
-        if (currentLang === 'en') {
-            displayName = displayName.replace(/[\u4e00-\u9fff]/g, '').trim();
+    // Try AI nickname first
+    if (result.ai_info && result.ai_info.nickname) {
+        const nick = result.ai_info.nickname.split(/[,、]/)[0].trim();
+        if (nick) displayName = nick;
+    }
+    // Fallback to common name
+    if (!displayName) {
+        if (currentLang === 'zh') {
+            displayName = result.display_name || result.en_name || '';
+        } else {
+            displayName = result.en_name || result.display_name || '';
+            if (currentLang === 'en') {
+                displayName = displayName.replace(/[\u4e00-\u9fff]/g, '').trim();
+            }
         }
     }
     
-    // Use AI name if in English mode (prefer iNaturalist name otherwise)
+    // Use AI name if in English mode and no nickname was used (prefer iNaturalist name otherwise)
     if (currentLang === 'en' && result.ai_info && result.ai_info.name) {
         const aiName = result.ai_info.name;
         if (/[a-zA-Z]/.test(aiName)) {
@@ -424,32 +432,18 @@ function initDistributionMap(taxonId) {
         return;
     }
 
-    // Fetch observation points with pagination
+    // Fetch observation points - fetch all pages in parallel
     const maxPages = 10;
     const perPage = 200;
-    let allResults = [];
+    const pages = Array.from({length: maxPages}, (_, i) => i + 1);
 
-    function fetchPage(page) {
-        const url = `https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&per_page=${perPage}&page=${page}&order_by=observed_on&order=desc`;
-        return fetch(url).then(r => {
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            return r.json();
-        }).then(data => {
-            const results = data.results || [];
-            allResults = allResults.concat(results);
-            const totalResults = data.total_results || 0;
-            const totalPages = Math.ceil(totalResults / perPage);
-            const hasMore = page < totalPages && page < maxPages && results.length === perPage;
-            console.log(`Map: page ${page}/${Math.min(totalPages, maxPages)} - got ${results.length} results`);
-            if (hasMore) {
-                return fetchPage(page + 1);
-            }
-            return allResults;
-        });
-    }
-
-    fetchPage(1)
-        .then(results => {
+    Promise.all(pages.map(page =>
+        fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&per_page=${perPage}&page=${page}&order_by=observed_on&order=desc`)
+            .then(r => r.ok ? r.json() : {results: []})
+            .then(d => d.results || [])
+    ))
+        .then(allPageResults => {
+            const results = allPageResults.flat();
             console.log(`Map: got ${results.length} observations`);
 
             if (results.length === 0) {
