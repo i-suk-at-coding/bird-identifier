@@ -175,9 +175,26 @@ def get_taxon_photos(taxon_id, token):
             obs_results = obs_data.get('results', [])
             print(f"  Found {len(obs_results)} observations with photos")
             
-            # Collect photos with their observation info
+            # Collect photos with their observation info - filter out non-bird content
             photo_candidates = []
-            for obs in obs_results[:30]:  # Check up to 30 observations
+            for obs in obs_results[:50]:  # Check up to 50 observations
+                # Skip observations that are specimens, skeletons, or not live birds
+                obs_description = (obs.get('description') or '').lower()
+                obs_tags = [tag.lower() for tag in obs.get('tags', [])]
+                obs_field = (obs.get('field') or '').lower()
+                
+                # Skip if it's a specimen, skeleton, bones, etc.
+                skip_keywords = ['specimen', 'skeleton', 'bones', 'skull', 'specimen', 'museum', 'collection', 'preserved', 'study', 'specimen', 'skeletal']
+                if any(kw in obs_description for kw in skip_keywords):
+                    continue
+                if any(kw in obs_field for kw in skip_keywords):
+                    continue
+                if any(kw in obs_tags for kw in skip_keywords):
+                    continue
+                    
+                # Check if it's a captive/cultivated (still valid bird, just note it)
+                captive = obs.get('captive', False)
+                
                 for photo in obs.get('photos', []):
                     photo_url = photo.get('url', '')
                     if not photo_url or photo_url in seen_urls:
@@ -186,18 +203,21 @@ def get_taxon_photos(taxon_id, token):
                     # Get license info (open licenses = more reliable)
                     license_code = photo.get('license_code', '')
                     
-                    # Score: prioritize research grade, more votes, open license
+                    # Score: prioritize research grade, more votes, open license, wild (not captive)
                     score = 0
                     if obs.get('quality_grade') == 'research':
-                        score += 10
+                        score += 15
                     score += obs.get('votes_count', 0)
                     if not license_code or license_code in ['cc-by', 'cc-by-nc', 'cc0']:
-                        score += 2
+                        score += 3
+                    if not captive:
+                        score += 5  # Prefer wild birds
                     
                     photo_candidates.append({
                         'url': photo_url.replace('square', 'medium'),
                         'score': score,
-                        'obs_id': obs.get('id')
+                        'obs_id': obs.get('id'),
+                        'captive': captive
                     })
                     seen_urls.add(photo_url)
             
@@ -275,7 +295,7 @@ def get_gemini_info(species_name, lang):
 Return ONLY JSON, no other text."""
         
         response = client.models.generate_content(
-            model="gemini-3-flash-preview",
+            model="gemini-1.5-pro",
             contents=prompt
         )
         
@@ -763,7 +783,7 @@ def test_gemini():
     try:
         client = genai.Client(api_key=gemini_key)
         response = client.models.generate_content(
-            model="gemini-3-flash-preview",
+            model="gemini-1.5-pro",
             contents='Say "OK" in one word'
         )
         
