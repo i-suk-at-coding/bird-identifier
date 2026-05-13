@@ -401,7 +401,8 @@ function initDistributionMap(taxonId) {
     try {
         distributionMap = L.map('distribution-map', {
             zoomControl: true,
-            attributionControl: false
+            attributionControl: false,
+            preferCanvas: true
         }).setView([20, 0], 2);
 
         // Add tile layer with reliable URL
@@ -424,7 +425,7 @@ function initDistributionMap(taxonId) {
     }
 
     // Fetch observation points with pagination
-    const maxPages = 4;
+    const maxPages = 10;
     const perPage = 200;
     let allResults = [];
 
