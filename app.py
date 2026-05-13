@@ -291,6 +291,11 @@ Return ONLY JSON, no other text."""
         return None
         
     except Exception as e:
+        error_str = str(e)
+        # Check for quota/rate limit errors - return None so app just skips AI section
+        if '429' in error_str or 'RESOURCE_EXHAUSTED' in error_str or 'quota' in error_str.lower():
+            print("  Gemini API quota exceeded (daily limit likely)")
+            return None  # Gracefully skip AI
         print(f"  Gemini API exception: {e}")
         return None
 
