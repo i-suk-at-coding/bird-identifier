@@ -433,7 +433,7 @@ function initDistributionMap(taxonId) {
     }
 
     // Fetch observation points - fetch all pages in parallel
-    const maxPages = 10;
+    const maxPages = 25;
     const perPage = 200;
     const pages = Array.from({length: maxPages}, (_, i) => i + 1);
 
