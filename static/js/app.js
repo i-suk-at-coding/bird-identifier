@@ -423,16 +423,32 @@ function initDistributionMap(taxonId) {
         return;
     }
 
-    // Fetch observation points
-    const obsUrl = `https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&per_page=200&order_by=observed_on&order=desc`;
+    // Fetch observation points with pagination
+    const maxPages = 4;
+    const perPage = 200;
+    let allResults = [];
 
-    fetch(obsUrl)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
+    function fetchPage(page) {
+        const url = `https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&per_page=${perPage}&page=${page}&order_by=observed_on&order=desc`;
+        return fetch(url).then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json();
+        }).then(data => {
             const results = data.results || [];
+            allResults = allResults.concat(results);
+            const totalResults = data.total_results || 0;
+            const totalPages = Math.ceil(totalResults / perPage);
+            const hasMore = page < totalPages && page < maxPages && results.length === perPage;
+            console.log(`Map: page ${page}/${Math.min(totalPages, maxPages)} - got ${results.length} results`);
+            if (hasMore) {
+                return fetchPage(page + 1);
+            }
+            return allResults;
+        });
+    }
+
+    fetchPage(1)
+        .then(results => {
             console.log(`Map: got ${results.length} observations`);
 
             if (results.length === 0) {
