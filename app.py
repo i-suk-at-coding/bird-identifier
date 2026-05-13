@@ -303,12 +303,11 @@ Return ONLY JSON, no other text."""
     openrouter_key = os.environ.get('OPENROUTER_API_KEY', '')
     if openrouter_key:
         try:
-            openrouter_model = os.environ.get('OPENROUTER_MODEL', 'google/gemma-4-31b-it:free')
+            openrouter_model = os.environ.get('OPENROUTER_MODEL', 'liquid/lfm-2.5-1.2b-instruct:free')
             payload = {
                 'model': openrouter_model,
                 'messages': [
-                    {'role': 'system', 'content': 'You are a bird expert. Return ONLY valid JSON, no other text.'},
-                    {'role': 'user', 'content': prompt}
+                    {'role': 'user', 'content': 'You are a bird expert. Return ONLY valid JSON.\n\n' + prompt}
                 ]
             }
             headers = {
