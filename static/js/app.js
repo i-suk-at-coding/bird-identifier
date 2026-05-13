@@ -144,12 +144,21 @@ function renderResults(result) {
 
     // Always prefer English name from iNaturalist, fallback to AI if available
     let displayName = result.en_name || result.display_name || '';
+    
+    // If in English mode, remove any Chinese characters from display name
+    if (currentLang === 'en') {
+        displayName = displayName.replace(/[\u4e00-\u9fff]/g, '').trim();
+    }
+    
     // Use AI name only if it's in English (check for non-Chinese characters)
     if (result.ai_info && result.ai_info.name) {
         const aiName = result.ai_info.name;
         // Only use AI name if it contains ASCII letters (likely English)
         if (/[a-zA-Z]/.test(aiName)) {
             displayName = aiName;
+            if (currentLang === 'en') {
+                displayName = displayName.replace(/[\u4e00-\u9fff]/g, '').trim();
+            }
         }
     }
     if (displayName === 'Unknown' || !displayName) {
