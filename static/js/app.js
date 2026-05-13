@@ -375,7 +375,7 @@ function initDistributionMap(taxonId) {
 
     // Set map height inline
     mapContainer.style.cssText = 'height: 250px !important; width: 100% !important; position: relative !important; overflow: hidden !important;';
-    mapDiv.style.cssText = 'height: 250px !important; width: 100% !important;';
+    mapDiv.style.cssText = 'height: 250px !important; width: 100% !important; background: #f0f0f0 !important;';
 
     // Verify the section is visible
     console.log('Map: container height', mapContainer.offsetHeight, 'offsetParent:', !!mapContainer.offsetParent);
@@ -400,8 +400,8 @@ function initDistributionMap(taxonId) {
             attributionControl: false
         }).setView([20, 0], 2);
 
-        // Add tile layer
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        // Add tile layer with reliable URL
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
             attribution: false
         }).addTo(distributionMap);
