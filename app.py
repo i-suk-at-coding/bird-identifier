@@ -295,7 +295,7 @@ def get_gemini_info(species_name, lang):
 Return ONLY JSON, no other text."""
         
         response = client.models.generate_content(
-            model="gemini-1.5-pro",
+            model="gemini-1.5-flash",
             contents=prompt
         )
         
@@ -783,7 +783,7 @@ def test_gemini():
     try:
         client = genai.Client(api_key=gemini_key)
         response = client.models.generate_content(
-            model="gemini-1.5-pro",
+            model="gemini-1.5-flash",
             contents='Say "OK" in one word'
         )
         
