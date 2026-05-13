@@ -142,23 +142,21 @@ function renderResults(result) {
     const confidencePercent = result.confidence ? Math.min(Math.round(result.confidence), 100) : 0;
     const confidenceLabel = confidencePercent >= 70 ? i18n.high_confidence : i18n.low_confidence;
 
-    // Always prefer English name from iNaturalist, fallback to AI if available
-    let displayName = result.en_name || result.display_name || '';
-    
-    // If in English mode, remove any Chinese characters from display name
-    if (currentLang === 'en') {
-        displayName = displayName.replace(/[\u4e00-\u9fff]/g, '').trim();
+    let displayName;
+    if (currentLang === 'zh') {
+        displayName = result.display_name || result.en_name || '';
+    } else {
+        displayName = result.en_name || result.display_name || '';
+        if (currentLang === 'en') {
+            displayName = displayName.replace(/[\u4e00-\u9fff]/g, '').trim();
+        }
     }
     
-    // Use AI name only if it's in English (check for non-Chinese characters)
-    if (result.ai_info && result.ai_info.name) {
+    // Use AI name if in English mode (prefer iNaturalist name otherwise)
+    if (currentLang === 'en' && result.ai_info && result.ai_info.name) {
         const aiName = result.ai_info.name;
-        // Only use AI name if it contains ASCII letters (likely English)
         if (/[a-zA-Z]/.test(aiName)) {
-            displayName = aiName;
-            if (currentLang === 'en') {
-                displayName = displayName.replace(/[\u4e00-\u9fff]/g, '').trim();
-            }
+            displayName = aiName.replace(/[\u4e00-\u9fff]/g, '').trim();
         }
     }
     if (displayName === 'Unknown' || !displayName) {
@@ -228,7 +226,7 @@ function renderResults(result) {
                 ${result.sources.map(s => `
                     <div class="source-row">
                         <span class="source-name">${s.source}</span>
-                        <span class="source-name-en">${s.name}</span>
+                        <span class="source-name-en">${currentLang === 'zh' && s.zh_name ? s.zh_name : s.name}</span>
                         <span class="source-score">${Math.round(s.score)}%</span>
                     </div>
                 `).join('')}
