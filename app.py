@@ -283,12 +283,12 @@ def get_gemini_info(species_name, lang):
     if lang == 'zh':
         prompt = f"""请提供关于鸟类"{species_name}"的详细信息。返回一个JSON对象，包含以下字段：
 - name: 中文通用名
-- nickname: 常用别名/昵称
-- habitat: 栖息地描述
-- diet: 饮食习性  
-- fun_facts: 3个有趣的事实（数组）
+- nickname: 常用别名/昵称（只用中文）
+- habitat: 栖息地描述（只用中文）
+- diet: 饮食习性（只用中文）  
+- fun_facts: 3个有趣的事实，只用中文（数组）
 
-请用中文回答，只返回JSON，不要其他文字。"""
+只返回JSON，所有文字内容必须纯中文，不要混入英文。不要其他文字。"""
     else:
         prompt = f"""Provide information about the bird species "{species_name}". Return a JSON object with:
 - name: English common name (not Chinese)
@@ -908,6 +908,9 @@ def identify():
             species_for_ai = merged.get('scientific', '') or merged.get('zh_name', '') or merged['name']
             if species_for_ai:
                 ai_info = get_gemini_info(species_for_ai, lang)
+                # Override AI-generated name with reliable iNaturalist name
+                if ai_info and merged.get('display_name'):
+                    ai_info['name'] = merged['display_name']
 
             return jsonify({
                 'success': True,
