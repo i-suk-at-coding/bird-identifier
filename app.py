@@ -182,22 +182,31 @@ def get_taxon_photos(taxon_id, token):
                 obs_description = (obs.get('description') or '').lower()
                 obs_tags = [tag.lower() for tag in obs.get('tags', [])]
                 obs_field = (obs.get('field') or '').lower()
+                obs_title = (obs.get('title') or '').lower()
+                obs_taxon_name = (obs.get('taxon', {}).get('name', '')).lower()
                 
                 # Skip if it's a specimen, skeleton, bones, etc.
-                skip_keywords = ['specimen', 'skeleton', 'bones', 'skull', 'specimen', 'museum', 'collection', 'preserved', 'study', 'specimen', 'skeletal']
-                if any(kw in obs_description for kw in skip_keywords):
-                    continue
-                if any(kw in obs_field for kw in skip_keywords):
-                    continue
-                if any(kw in obs_tags for kw in skip_keywords):
+                skip_keywords = ['specimen', 'skeleton', 'bones', 'skull', 'museum', 'collection', 'preserved', 'study', 'skeletal', 'taxidermy', 'dead', 'deceased', 'scull', 'remains', 'carcass', 'roadkill', 'dermestid', 'cleaned', 'bleached']
+                
+                blocked = any(kw in obs_description for kw in skip_keywords)
+                blocked = blocked or any(kw in obs_field for kw in skip_keywords)
+                blocked = blocked or any(kw in obs_tags for kw in skip_keywords)
+                blocked = blocked or any(kw in obs_title for kw in skip_keywords)
+                blocked = blocked or any(kw in obs_taxon_name for kw in ['skeletal', 'skeleton'])
+                if blocked:
                     continue
                     
-                # Check if it's a captive/cultivated (still valid bird, just note it)
+                # Check if it's a captive/cultivated
                 captive = obs.get('captive', False)
                 
                 for photo in obs.get('photos', []):
                     photo_url = photo.get('url', '')
                     if not photo_url or photo_url in seen_urls:
+                        continue
+                    
+                    # Check photo URL for skeleton keywords (iNaturalist sometimes names photos)
+                    photo_url_lower = photo_url.lower()
+                    if any(kw in photo_url_lower for kw in ['skull', 'skeleton', 'bones', 'specimen']):
                         continue
                     
                     # Get license info (open licenses = more reliable)
@@ -295,7 +304,7 @@ def get_gemini_info(species_name, lang):
 Return ONLY JSON, no other text."""
         
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt
         )
         
@@ -783,7 +792,7 @@ def test_gemini():
     try:
         client = genai.Client(api_key=gemini_key)
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             contents='Say "OK" in one word'
         )
         
