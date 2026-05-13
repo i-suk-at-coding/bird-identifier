@@ -360,45 +360,60 @@ let distributionMap = null;
 function initDistributionMap(taxonId) {
     const mapContainer = document.getElementById('map-container');
     const mapDiv = document.getElementById('distribution-map');
-    if (!mapDiv || !mapContainer || !taxonId) return;
-    
-    // Get i18n from window
+    if (!mapDiv || !mapContainer || !taxonId) {
+        console.log('Map init aborted - missing elements');
+        return;
+    }
+
     const mapI18n = window.currentI18n || {};
-    
+
     // Destroy existing map if any
     if (distributionMap) {
         distributionMap.remove();
         distributionMap = null;
     }
-    
-    // Remove loading, add fullscreen button
+
+    // Set map height inline to avoid CSS inheritance issues
+    mapDiv.style.height = '250px';
+    mapContainer.style.height = '250px';
+
+    // Clear loading, add fullscreen button
     mapDiv.innerHTML = '';
+    mapContainer.querySelectorAll('.map-fullscreen-btn').forEach(b => b.remove());
     const fsBtn = document.createElement('button');
     fsBtn.className = 'map-fullscreen-btn';
     fsBtn.textContent = mapI18n.fullscreen || '全屏';
     fsBtn.onclick = () => toggleMapFullscreen(mapContainer);
     mapContainer.appendChild(fsBtn);
-    
-    // Initialize map centered on world
-    distributionMap = L.map('distribution-map', {
-        zoomControl: true,
-        attributionControl: false
-    }).setView([20, 0], 2);
-    
-    // Add tile layer (OpenStreetMap)
-    const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18
-    }).addTo(distributionMap);
-    tileLayer.on('tileerror', () => {
-        // Tile error, add a fallback tile layer
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+    // Initialize map
+    try {
+        distributionMap = L.map('distribution-map', {
+            zoomControl: true,
+            attributionControl: false
+        }).setView([20, 0], 2);
+
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18
         }).addTo(distributionMap);
-    });
-    
-    // Try fetching observation points (works for all taxon ranks)
+
+        console.log('Map: Leaflet initialized');
+
+        // Force size recalculation
+        setTimeout(() => {
+            if (distributionMap) distributionMap.invalidateSize();
+        }, 200);
+
+    } catch (e) {
+        console.error('Map: Leaflet init failed:', e);
+        showMapNoData(mapContainer);
+        return;
+    }
+
+    // Fetch observation points
     const obsUrl = `https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&per_page=200&order_by=observed_on&order=desc`;
-    
+
     fetch(obsUrl)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -407,12 +422,15 @@ function initDistributionMap(taxonId) {
         .then(data => {
             const results = data.results || [];
             console.log(`Map: got ${results.length} observations`);
+
             if (results.length === 0) {
                 showMapNoData(mapContainer);
                 return;
             }
-            
-            const points = [];
+
+            const bounds = [];
+            let pointCount = 0;
+
             results.forEach(obs => {
                 let lat, lng;
                 const geo = obs.geojson;
@@ -420,72 +438,69 @@ function initDistributionMap(taxonId) {
                     lng = geo.coordinates[0];
                     lat = geo.coordinates[1];
                 } else if (obs.location) {
-                    // location is "lat,lng" string
                     const parts = obs.location.split(',');
                     lat = parseFloat(parts[0]);
                     lng = parseFloat(parts[1]);
                 }
-                if (lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
-                    points.push([lat, lng]);
+                if (!isNaN(lat) && !isNaN(lng) && lat != null && lng != null) {
+                    const marker = L.circleMarker([lat, lng], {
+                        radius: 4,
+                        fillColor: '#E76F51',
+                        color: '#F4A261',
+                        weight: 1.5,
+                        fillOpacity: 0.7
+                    }).addTo(distributionMap);
+                    bounds.push([lat, lng]);
+                    pointCount++;
                 }
             });
-            
-            if (points.length === 0) {
+
+            console.log(`Map: added ${pointCount} markers`);
+
+            if (pointCount === 0) {
                 showMapNoData(mapContainer);
                 return;
             }
-            
-            try {
-                // Add all observation points
-                const markers = [];
-                points.forEach(point => {
-                    markers.push(L.circleMarker(point, {
-                        radius: 3,
-                        fillColor: '#E76F51',
-                        color: '#F4A261',
-                        weight: 1,
-                        fillOpacity: 0.6
-                    }).addTo(distributionMap));
-                });
-                
-                // Fit map to bounds
-                if (markers.length === 1) {
-                    distributionMap.setView(markers[0].getLatLng(), 5);
-                } else {
-                    const group = L.featureGroup(markers);
-                    distributionMap.fitBounds(group.getBounds().pad(0.1));
-                }
-            
-                // Force map to recalculate if container was hidden
-                setTimeout(() => distributionMap.invalidateSize(), 100);
-                
-                // Add info text
-                const info = L.control({position: 'bottomleft'});
-                info.onAdd = () => {
-                    const div = L.DomUtil.create('div', 'map-obs-count');
-                    div.innerHTML = `${results.length} ${mapI18n.observations || 'observations'}`;
-                    return div;
-                };
-                info.addTo(distributionMap);
-            } catch (err) {
-                console.error('Map rendering error:', err);
-                showMapNoData(mapContainer);
+
+            // Fit to bounds
+            if (pointCount === 1) {
+                distributionMap.setView(bounds[0], 6);
+            } else {
+                distributionMap.fitBounds(bounds, { padding: [20, 20] });
             }
+
+            distributionMap.invalidateSize();
+
+            // Show observation count
+            const info = L.control({position: 'bottomleft'});
+            info.onAdd = () => {
+                const div = L.DomUtil.create('div', 'map-obs-count');
+                div.innerHTML = `${results.length} ${mapI18n.observations || 'observations'}`;
+                return div;
+            };
+            info.addTo(distributionMap);
+
+            console.log('Map: done');
         })
         .catch(err => {
-            console.log('Map data not available:', err);
+            console.error('Map: fetch/parse error:', err);
             showMapNoData(mapContainer);
         });
 }
 
-function showMapNoData(container, isGroupLevel = false) {
+function showMapNoData(container) {
     const mapDiv = document.getElementById('distribution-map');
     const mapI18n = window.currentI18n || {};
     if (mapDiv) {
-        const message = isGroupLevel 
-            ? (mapI18n.map_group_level || 'Distribution map only available for species-level identifications')
-            : (mapI18n.no_distribution_data || '暂无分布数据');
-        mapDiv.innerHTML = `<div class="map-no-data">${message}</div>`;
+        // Destroy map instance to free resources
+        if (distributionMap) {
+            distributionMap.remove();
+            distributionMap = null;
+        }
+        const msg = mapI18n.no_distribution_data || '暂无分布数据';
+        const link = mapI18n.view_range_map || '查看分布地图 →';
+        // Also try to get the iNaturalist URL from the container's data attribute or fallback text
+        mapDiv.innerHTML = `<div class="map-no-data">${msg}</div>`;
     }
 }
 
@@ -494,16 +509,14 @@ function toggleMapFullscreen(container) {
     const btn = container.querySelector('.map-fullscreen-btn');
     const mapI18n = window.currentI18n || {};
     if (btn) {
-        btn.textContent = container.classList.contains('fullscreen') 
-            ? (mapI18n.exit_fullscreen || '退出全屏') 
+        btn.textContent = container.classList.contains('fullscreen')
+            ? (mapI18n.exit_fullscreen || '退出全屏')
             : (mapI18n.fullscreen || '全屏');
     }
-    // Invalidate map size when toggling
+    // Force map resize after toggle
     setTimeout(() => {
-        if (distributionMap) {
-            distributionMap.invalidateSize();
-        }
-    }, 100);
+        if (distributionMap) distributionMap.invalidateSize();
+    }, 300);
 }
 
 function resetToUpload() {
