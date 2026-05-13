@@ -273,19 +273,12 @@ def get_taxon_photos(taxon_id, token):
 
 
 def get_gemini_info(species_name, lang):
-    """Get Chinese name and overview from Google Gemini AI"""
-    from google import genai
+    """Get bird info from OpenRouter or Google Gemini AI"""
+    import re
     
-    gemini_key = os.environ.get('GEMINI_API_KEY', '')
-    if not gemini_key:
-        return None
-    
-    try:
-        client = genai.Client(api_key=gemini_key)
-        
-        # Build prompt based on language
-        if lang == 'zh':
-            prompt = f"""请提供关于鸟类"{species_name}"的详细信息。返回一个JSON对象，包含以下字段：
+    # Build prompt based on language
+    if lang == 'zh':
+        prompt = f"""请提供关于鸟类"{species_name}"的详细信息。返回一个JSON对象，包含以下字段：
 - name: 中文通用名
 - nickname: 常用别名/昵称
 - habitat: 栖息地描述
@@ -293,8 +286,8 @@ def get_gemini_info(species_name, lang):
 - fun_facts: 3个有趣的事实（数组）
 
 请用中文回答，只返回JSON，不要其他文字。"""
-        else:
-            prompt = f"""Provide information about the bird species "{species_name}". Return a JSON object with:
+    else:
+        prompt = f"""Provide information about the bird species "{species_name}". Return a JSON object with:
 - name: English common name (not Chinese)
 - nickname: common nickname/alias (e.g., "red bird", "cardinal")
 - habitat: habitat description
@@ -302,31 +295,55 @@ def get_gemini_info(species_name, lang):
 - fun_facts: 3 interesting facts (array)
 
 Return ONLY JSON, no other text."""
-        
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt
-        )
-        
-        text = response.text
-        
-        # Try to parse as JSON
-        import re
-        json_match = re.search(r'\{.*\}', text, re.DOTALL)
-        if json_match:
-            result = json.loads(json_match.group())
-            return result
-        
-        return None
-        
-    except Exception as e:
-        error_str = str(e)
-        # Check for quota/rate limit errors - return None so app just skips AI section
-        if '429' in error_str or 'RESOURCE_EXHAUSTED' in error_str or 'quota' in error_str.lower():
-            print("  Gemini API quota exceeded (daily limit likely)")
-            return None  # Gracefully skip AI
-        print(f"  Gemini API exception: {e}")
-        return None
+    
+    # Try OpenRouter first if configured
+    openrouter_key = os.environ.get('OPENROUTER_API_KEY', '')
+    if openrouter_key:
+        try:
+            openrouter_model = os.environ.get('OPENROUTER_MODEL', 'openai/gpt-4o-mini')
+            payload = {
+                'model': openrouter_model,
+                'messages': [
+                    {'role': 'system', 'content': 'You are a bird expert. Return only valid JSON.'},
+                    {'role': 'user', 'content': prompt}
+                ],
+                'response_format': {'type': 'json_object'}
+            }
+            headers = {
+                'Authorization': f'Bearer {openrouter_key}',
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://github.com/i-suk-at-coding/bird-identifier',
+                'X-Title': 'Bird Identifier'
+            }
+            resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=30)
+            if resp.status_code == 200:
+                text = resp.json()['choices'][0]['message']['content']
+                json_match = re.search(r'\{.*\}', text, re.DOTALL)
+                if json_match:
+                    return json.loads(json_match.group())
+            print(f"  OpenRouter error: {resp.status_code}")
+        except Exception as e:
+            print(f"  OpenRouter exception: {e}")
+    
+    # Fallback to Gemini
+    gemini_key = os.environ.get('GEMINI_API_KEY', '')
+    if gemini_key:
+        try:
+            from google import genai
+            client = genai.Client(api_key=gemini_key)
+            response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+            text = response.text
+            json_match = re.search(r'\{.*\}', text, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+        except Exception as e:
+            error_str = str(e)
+            if '429' in error_str or 'RESOURCE_EXHAUSTED' in error_str or 'quota' in error_str.lower():
+                print("  Gemini quota exceeded")
+            else:
+                print(f"  Gemini exception: {e}")
+    
+    return None
 
 
 def extract_taxonomy(common_ancestor):
