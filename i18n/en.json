@@ -56,5 +56,6 @@
   "diet": "Diet",
   "fun_facts": "Fun Facts",
   "common_name": "Common Name",
-  "nickname": "Nickname"
+  "nickname": "Nickname",
+  "ai_model": "AI Model"
 }

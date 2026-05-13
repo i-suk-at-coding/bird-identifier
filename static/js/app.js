@@ -291,6 +291,7 @@ function renderResults(result) {
                             </ul>
                         </div>
                     ` : ''}
+                    ${ai.model ? `<p class="ai-model-ref"><small>${i18n.ai_model || 'Model'}: ${ai.model}</small></p>` : ''}
                 </div>
             `;
         }

@@ -303,10 +303,9 @@ Return ONLY JSON, no other text."""
     openrouter_key = os.environ.get('OPENROUTER_API_KEY', '')
     if openrouter_key:
         fallback_models = [
-            os.environ.get('OPENROUTER_MODEL', 'google/gemma-4-31b-it:free'),
-            'liquid/lfm-2.5-1.2b-instruct:free',
-            'qwen/qwen3-coder:free',
-            'cognitivecomputations/dolphin-mistral-24b-venice-edition:free'
+            os.environ.get('OPENROUTER_MODEL', 'inclusionai/ring-2.6-1t:free'),
+            'google/gemma-4-31b-it:free',
+            'liquid/lfm-2.5-1.2b-instruct:free'
         ]
         
         for openrouter_model in fallback_models:
@@ -325,10 +324,16 @@ Return ONLY JSON, no other text."""
                 }
                 resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=30)
                 if resp.status_code == 200:
-                    text = resp.json()['choices'][0]['message']['content']
+                    resp_data = resp.json()
+                    text = resp_data['choices'][0]['message']['content']
                     json_match = re.search(r'\{.*\}', text, re.DOTALL)
                     if json_match:
-                        return json.loads(json_match.group())
+                        result = json.loads(json_match.group())
+                        # Add which model was used
+                        model_used = resp_data.get('model', openrouter_model)
+                        result['model'] = model_used
+                        print(f"  AI model used: {model_used}")
+                        return result
                     break
                 elif resp.status_code != 429:
                     # Only stop trying if it's not a rate limit
