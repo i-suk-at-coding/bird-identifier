@@ -484,6 +484,8 @@ function initDistributionMap(taxonId) {
                     console.log('Map: state after settle - zoom:', distributionMap.getZoom(), 'center:', distributionMap.getCenter());
                     console.log('Map: container size', mapContainer.offsetWidth + 'x' + mapContainer.offsetHeight);
                     console.log('Map: leaflet container found:', !!document.querySelector('.leaflet-container'));
+                    console.log('Map: SVG in map:', !!mapDiv.querySelector('svg'));
+                    console.log('Map: tile pane children:', document.querySelector('.leaflet-tile-pane')?.children.length);
                 }
             }, 500);
 
