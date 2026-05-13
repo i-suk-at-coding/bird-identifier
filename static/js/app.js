@@ -373,9 +373,16 @@ function initDistributionMap(taxonId) {
         distributionMap = null;
     }
 
-    // Set map height inline to avoid CSS inheritance issues
-    mapDiv.style.height = '250px';
-    mapContainer.style.height = '250px';
+    // Set map height inline - use !important to override any CSS
+    mapContainer.style.cssText = 'height: 250px !important; width: 100% !important; position: relative !important; overflow: hidden !important;';
+    mapDiv.style.cssText = 'height: 250px !important; width: 100% !important;';
+
+    // Verify the section is visible
+    console.log('Map: container height', mapContainer.offsetHeight, 'offsetParent:', !!mapContainer.offsetParent);
+
+    // Remove any leftover "no data" messages from previous renders
+    const existingNoData = mapDiv.querySelector('.map-no-data');
+    if (existingNoData) existingNoData.remove();
 
     // Clear loading, add fullscreen button
     mapDiv.innerHTML = '';
