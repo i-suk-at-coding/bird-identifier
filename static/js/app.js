@@ -300,6 +300,7 @@ function renderResults(result) {
     const rank = result.taxonomy?.rank || '';
     const taxonId = result.taxonomy?.taxon_id || result.taxon_id;
     const isSpeciesLevel = rank === 'species' || rank === 'subspecies' || rank === 'variety';
+    console.log('Map debug:', { rank, taxonId, isSpeciesLevel, rangemap_url: result.rangemap_url });
     if (taxonId && isSpeciesLevel) {
         mapHtml = `
             <div class="map-section">
