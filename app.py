@@ -5,6 +5,9 @@ import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from PIL import Image
 from io import BytesIO
+from dotenv import load_dotenv
+
+load_dotenv()  # Load .env file
 
 # Load .env file for local development
 try:
