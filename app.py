@@ -305,7 +305,8 @@ Return ONLY JSON, no other text."""
         fallback_models = [
             os.environ.get('OPENROUTER_MODEL', 'inclusionai/ring-2.6-1t:free'),
             'google/gemma-4-31b-it:free',
-            'liquid/lfm-2.5-1.2b-instruct:free'
+            'google/gemma-4-26b-a4b-it:free',
+            'nvidia/nemotron-3-super-120b-a12b:free'
         ]
         
         for openrouter_model in fallback_models:
