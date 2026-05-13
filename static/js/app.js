@@ -435,7 +435,7 @@ function initDistributionMap(taxonId) {
                 return;
             }
 
-            const bounds = [];
+            const bounds = L.latLngBounds([]);
             let pointCount = 0;
 
             results.forEach(obs => {
@@ -457,7 +457,7 @@ function initDistributionMap(taxonId) {
                         weight: 1.5,
                         fillOpacity: 0.7
                     }).addTo(distributionMap);
-                    bounds.push([lat, lng]);
+                    bounds.extend([lat, lng]);
                     pointCount++;
                 }
             });
@@ -471,11 +471,10 @@ function initDistributionMap(taxonId) {
 
             // Fit to bounds
             if (pointCount === 1) {
-                distributionMap.setView(bounds[0], 6);
-            } else {
-                distributionMap.fitBounds(bounds, { padding: [20, 20] });
+                distributionMap.setView(bounds.getCenter(), 6);
+            } else if (bounds.isValid()) {
+                distributionMap.fitBounds(bounds, { padding: [20, 20], maxZoom: 12 });
             }
-
             distributionMap.invalidateSize();
 
             // Show observation count
