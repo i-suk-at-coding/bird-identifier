@@ -394,9 +394,13 @@ function initDistributionMap(taxonId) {
     const obsUrl = `https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&per_page=200&order_by=observed_on&order=desc`;
     
     fetch(obsUrl)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
         .then(data => {
             const results = data.results || [];
+            console.log(`Map: got ${results.length} observations`);
             if (results.length === 0) {
                 showMapNoData(mapContainer);
                 return;
@@ -404,10 +408,19 @@ function initDistributionMap(taxonId) {
             
             const points = [];
             results.forEach(obs => {
-                const lat = obs.geojson?.coordinates?.[1];
-                const lng = obs.geojson?.coordinates?.[0] || obs.location;
-                if (lat && lng) {
-                    points.push([lat, parseFloat(lng)]);
+                let lat, lng;
+                const geo = obs.geojson;
+                if (geo && geo.coordinates && geo.coordinates.length >= 2) {
+                    lng = geo.coordinates[0];
+                    lat = geo.coordinates[1];
+                } else if (obs.location) {
+                    // location is "lat,lng" string
+                    const parts = obs.location.split(',');
+                    lat = parseFloat(parts[0]);
+                    lng = parseFloat(parts[1]);
+                }
+                if (lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
+                    points.push([lat, lng]);
                 }
             });
             
@@ -416,27 +429,16 @@ function initDistributionMap(taxonId) {
                 return;
             }
             
-            // Add points to map
-            L.circleMarker(points[0], {
-                radius: 3,
-                fillColor: '#F4A261',
-                color: '#F4A261',
-                weight: 1,
-                fillOpacity: 0.6
-            }).addTo(distributionMap);
-            
-            // Add remaining points with heat-like density
-            const markerGroup = L.layerGroup();
+            // Add all observation points
             points.forEach(point => {
                 L.circleMarker(point, {
-                    radius: 2,
+                    radius: 3,
                     fillColor: '#E76F51',
-                    color: '#E76F51',
+                    color: '#F4A261',
                     weight: 1,
-                    fillOpacity: 0.5
-                }).addTo(markerGroup);
+                    fillOpacity: 0.6
+                }).addTo(distributionMap);
             });
-            markerGroup.addTo(distributionMap);
             
             distributionMap.fitBounds(L.latLngBounds(points), { padding: [20, 20] });
             
