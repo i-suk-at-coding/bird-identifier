@@ -299,25 +299,14 @@ function renderResults(result) {
     let mapHtml = '';
     const rank = result.taxonomy?.rank || '';
     const taxonId = result.taxonomy?.taxon_id || result.taxon_id;
-    const isSpeciesLevel = rank === 'species' || rank === 'subspecies' || rank === 'variety';
-    console.log('Map debug:', { rank, taxonId, isSpeciesLevel, rangemap_url: result.rangemap_url });
-    if (taxonId && isSpeciesLevel) {
+    console.log('Map debug:', { rank, taxonId, rangemap_url: result.rangemap_url });
+    if (taxonId) {
         mapHtml = `
             <div class="map-section">
                 <h3 class="map-title">${i18n.distribution_map || '分布地图'}</h3>
                 <div class="map-container" id="map-container">
                     <div class="map-loading">${i18n.loading_map || '加载地图中...'}</div>
                     <div id="distribution-map"></div>
-                </div>
-            </div>
-        `;
-    } else if (taxonId && result.rangemap_url) {
-        mapHtml = `
-            <div class="map-section">
-                <h3 class="map-title">${i18n.distribution_map || '分布地图'}</h3>
-                <div class="map-container map-container-link">
-                    <div class="map-no-data">${i18n.map_group_level || '分布地图仅适用于物种级别识别'}</div>
-                    <a href="${result.rangemap_url}" target="_blank" class="view-map-link">${i18n.view_range_map || '查看分布地图 →'}</a>
                 </div>
             </div>
         `;
@@ -401,33 +390,64 @@ function initDistributionMap(taxonId) {
         maxZoom: 18
     }).addTo(distributionMap);
     
-    // Try to fetch GeoJSON from iNaturalist's taxon range API
-    const geojsonUrl = `https://api.inaturalist.org/v1/taxa/${taxonId}/range`;
+    // Try fetching observation points (works for all taxon ranks)
+    const obsUrl = `https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&per_page=200&order_by=observed_on&order=desc`;
     
-    fetch(geojsonUrl)
-        .then(response => {
-            if (!response.ok) throw new Error('No data');
-            return response.json();
-        })
-        .then(geojson => {
-            if (geojson && geojson.range) {
-                const rangeGeoJSON = geojson.range;
-                if (rangeGeoJSON.features && rangeGeoJSON.features.length > 0) {
-                    const layer = L.geoJSON(rangeGeoJSON, {
-                        style: {
-                            fillColor: '#F4A261',
-                            fillOpacity: 0.4,
-                            color: '#F4A261',
-                            weight: 2
-                        }
-                    }).addTo(distributionMap);
-                    distributionMap.fitBounds(layer.getBounds(), { padding: [20, 20] });
-                } else {
-                    showMapNoData(mapContainer);
-                }
-            } else {
+    fetch(obsUrl)
+        .then(response => response.json())
+        .then(data => {
+            const results = data.results || [];
+            if (results.length === 0) {
                 showMapNoData(mapContainer);
+                return;
             }
+            
+            const points = [];
+            results.forEach(obs => {
+                const lat = obs.geojson?.coordinates?.[1];
+                const lng = obs.geojson?.coordinates?.[0] || obs.location;
+                if (lat && lng) {
+                    points.push([lat, parseFloat(lng)]);
+                }
+            });
+            
+            if (points.length === 0) {
+                showMapNoData(mapContainer);
+                return;
+            }
+            
+            // Add points to map
+            L.circleMarker(points[0], {
+                radius: 3,
+                fillColor: '#F4A261',
+                color: '#F4A261',
+                weight: 1,
+                fillOpacity: 0.6
+            }).addTo(distributionMap);
+            
+            // Add remaining points with heat-like density
+            const markerGroup = L.layerGroup();
+            points.forEach(point => {
+                L.circleMarker(point, {
+                    radius: 2,
+                    fillColor: '#E76F51',
+                    color: '#E76F51',
+                    weight: 1,
+                    fillOpacity: 0.5
+                }).addTo(markerGroup);
+            });
+            markerGroup.addTo(distributionMap);
+            
+            distributionMap.fitBounds(L.latLngBounds(points), { padding: [20, 20] });
+            
+            // Add info text
+            const info = L.control({position: 'bottomleft'});
+            info.onAdd = () => {
+                const div = L.DomUtil.create('div', 'map-obs-count');
+                div.innerHTML = `${results.length} ${mapI18n.observations || 'observations'}`;
+                return div;
+            };
+            info.addTo(distributionMap);
         })
         .catch(err => {
             console.log('Map data not available:', err);
