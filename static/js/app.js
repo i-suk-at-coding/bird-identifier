@@ -380,7 +380,11 @@ function initDistributionMap(taxonId) {
     // Verify the section is visible
     console.log('Map: container height', mapContainer.offsetHeight, 'offsetParent:', !!mapContainer.offsetParent);
 
-    // Remove any leftover "no data" messages from previous renders
+    // Remove loading text - it pushes the map down and hides it
+    const loadingDiv = mapContainer.querySelector('.map-loading');
+    if (loadingDiv) loadingDiv.remove();
+
+    // Clear any leftover "no data" messages from previous renders
     const existingNoData = mapDiv.querySelector('.map-no-data');
     if (existingNoData) existingNoData.remove();
 
