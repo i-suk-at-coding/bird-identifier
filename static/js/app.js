@@ -373,7 +373,7 @@ function initDistributionMap(taxonId) {
         distributionMap = null;
     }
 
-    // Set map height inline - use !important to override any CSS
+    // Set map height inline
     mapContainer.style.cssText = 'height: 250px !important; width: 100% !important; position: relative !important; overflow: hidden !important;';
     mapDiv.style.cssText = 'height: 250px !important; width: 100% !important;';
 
@@ -477,6 +477,15 @@ function initDistributionMap(taxonId) {
                 distributionMap.fitBounds(bounds, { padding: [20, 20], maxZoom: 12 });
             }
             distributionMap.invalidateSize();
+            
+            // Log state after a brief delay for async operations to settle
+            setTimeout(() => {
+                if (distributionMap) {
+                    console.log('Map: state after settle - zoom:', distributionMap.getZoom(), 'center:', distributionMap.getCenter());
+                    console.log('Map: container size', mapContainer.offsetWidth + 'x' + mapContainer.offsetHeight);
+                    console.log('Map: leaflet container found:', !!document.querySelector('.leaflet-container'));
+                }
+            }, 500);
 
             // Show observation count
             const info = L.control({position: 'bottomleft'});
