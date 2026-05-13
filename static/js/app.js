@@ -401,8 +401,9 @@ function initDistributionMap(taxonId) {
         }).setView([20, 0], 2);
 
         // Add tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 18,
+            attribution: false
         }).addTo(distributionMap);
 
         console.log('Map: Leaflet initialized');
@@ -462,7 +463,7 @@ function initDistributionMap(taxonId) {
                 }
             });
 
-            console.log(`Map: added ${pointCount} markers`);
+            console.log(`Map: added ${pointCount} markers, bounds:`, bounds.toBBoxString());
 
             if (pointCount === 0) {
                 showMapNoData(mapContainer);
