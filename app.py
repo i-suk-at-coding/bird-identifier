@@ -304,10 +304,9 @@ Return ONLY JSON, no other text."""
             payload = {
                 'model': openrouter_model,
                 'messages': [
-                    {'role': 'system', 'content': 'You are a bird expert. Return only valid JSON.'},
+                    {'role': 'system', 'content': 'You are a bird expert. Return ONLY valid JSON, no other text.'},
                     {'role': 'user', 'content': prompt}
-                ],
-                'response_format': {'type': 'json_object'}
+                ]
             }
             headers = {
                 'Authorization': f'Bearer {openrouter_key}',
