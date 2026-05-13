@@ -567,7 +567,8 @@ def get_full_taxonomy(taxon_id, common_ancestor):
     taxonomy = {
         'taxon_id': taxon_id,
         'rank': common_ancestor.get('rank', ''),
-        'species_count': common_ancestor.get('complete_species_count', 0)
+        'species_count': common_ancestor.get('complete_species_count', 0),
+        'rangemap_url': f'https://www.inaturalist.org/taxa/{taxon_id}#map-tab'
     }
 
     try:

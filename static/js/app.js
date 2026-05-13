@@ -297,14 +297,26 @@ function renderResults(result) {
 
     // Map section - embedded Leaflet map
     let mapHtml = '';
-    const taxonId = result.taxonomy?.group_taxon_id || result.taxonomy?.taxon_id || result.taxon_id;
-    if (taxonId) {
+    const rank = result.taxonomy?.rank || '';
+    const taxonId = result.taxonomy?.taxon_id || result.taxon_id;
+    const isSpeciesLevel = rank === 'species' || rank === 'subspecies' || rank === 'variety';
+    if (taxonId && isSpeciesLevel) {
         mapHtml = `
             <div class="map-section">
                 <h3 class="map-title">${i18n.distribution_map || '分布地图'}</h3>
                 <div class="map-container" id="map-container">
                     <div class="map-loading">${i18n.loading_map || '加载地图中...'}</div>
                     <div id="distribution-map"></div>
+                </div>
+            </div>
+        `;
+    } else if (taxonId && result.rangemap_url) {
+        mapHtml = `
+            <div class="map-section">
+                <h3 class="map-title">${i18n.distribution_map || '分布地图'}</h3>
+                <div class="map-container map-container-link">
+                    <div class="map-no-data">${i18n.map_group_level || '分布地图仅适用于物种级别识别'}</div>
+                    <a href="${result.rangemap_url}" target="_blank" class="view-map-link">${i18n.view_range_map || '查看分布地图 →'}</a>
                 </div>
             </div>
         `;
