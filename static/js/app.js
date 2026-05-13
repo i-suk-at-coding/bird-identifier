@@ -386,9 +386,15 @@ function initDistributionMap(taxonId) {
     }).setView([20, 0], 2);
     
     // Add tile layer (OpenStreetMap)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18
     }).addTo(distributionMap);
+    tileLayer.on('tileerror', () => {
+        // Tile error, add a fallback tile layer
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18
+        }).addTo(distributionMap);
+    });
     
     // Try fetching observation points (works for all taxon ranks)
     const obsUrl = `https://api.inaturalist.org/v1/observations?taxon_id=${taxonId}&per_page=200&order_by=observed_on&order=desc`;
@@ -429,27 +435,42 @@ function initDistributionMap(taxonId) {
                 return;
             }
             
-            // Add all observation points
-            points.forEach(point => {
-                L.circleMarker(point, {
-                    radius: 3,
-                    fillColor: '#E76F51',
-                    color: '#F4A261',
-                    weight: 1,
-                    fillOpacity: 0.6
-                }).addTo(distributionMap);
-            });
+            try {
+                // Add all observation points
+                const markers = [];
+                points.forEach(point => {
+                    markers.push(L.circleMarker(point, {
+                        radius: 3,
+                        fillColor: '#E76F51',
+                        color: '#F4A261',
+                        weight: 1,
+                        fillOpacity: 0.6
+                    }).addTo(distributionMap));
+                });
+                
+                // Fit map to bounds
+                if (markers.length === 1) {
+                    distributionMap.setView(markers[0].getLatLng(), 5);
+                } else {
+                    const group = L.featureGroup(markers);
+                    distributionMap.fitBounds(group.getBounds().pad(0.1));
+                }
             
-            distributionMap.fitBounds(L.latLngBounds(points), { padding: [20, 20] });
-            
-            // Add info text
-            const info = L.control({position: 'bottomleft'});
-            info.onAdd = () => {
-                const div = L.DomUtil.create('div', 'map-obs-count');
-                div.innerHTML = `${results.length} ${mapI18n.observations || 'observations'}`;
-                return div;
-            };
-            info.addTo(distributionMap);
+                // Force map to recalculate if container was hidden
+                setTimeout(() => distributionMap.invalidateSize(), 100);
+                
+                // Add info text
+                const info = L.control({position: 'bottomleft'});
+                info.onAdd = () => {
+                    const div = L.DomUtil.create('div', 'map-obs-count');
+                    div.innerHTML = `${results.length} ${mapI18n.observations || 'observations'}`;
+                    return div;
+                };
+                info.addTo(distributionMap);
+            } catch (err) {
+                console.error('Map rendering error:', err);
+                showMapNoData(mapContainer);
+            }
         })
         .catch(err => {
             console.log('Map data not available:', err);
@@ -522,6 +543,7 @@ fetch(`/i18n/${currentLang}`)
     .then(i18n => {
         window.currentI18n = i18n;
         updateAllUI();
+        updateTitle();
     })
     .catch(e => console.error('Failed to load initial i18n:', e));
 
@@ -549,6 +571,13 @@ function updateAllUI() {
     if (btnNewEl) btnNewEl.textContent = window.currentI18n.btn_try_again;
 }
 
+// Update page title to match current language
+function updateTitle() {
+    if (window.currentI18n && window.currentI18n.app_title) {
+        document.title = window.currentI18n.app_title;
+    }
+}
+
 async function toggleLanguage() {
     // Toggle language
     if (currentLang === 'zh') {
@@ -570,6 +599,7 @@ async function toggleLanguage() {
 
         // Update all UI text
         updateAllUI();
+        updateTitle();
 
         // Update taxonomy toggle button text if visible
         const detailsBtn = document.querySelector('.btn-details-toggle');
