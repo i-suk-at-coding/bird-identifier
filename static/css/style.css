@@ -707,15 +707,11 @@ footer p {
 .map-container {
     position: relative;
     width: 100%;
-    min-height: 250px;
+    height: 250px;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid #333;
     background: #1a1a2e;
-}
-
-.map-container-link {
-    min-height: 200px;
 }
 
 .map-container.fullscreen {
@@ -725,6 +721,7 @@ footer p {
     width: 100vw;
     height: 100vh;
     z-index: 99999;
+}
     margin: 0;
     border-radius: 0;
     background: #0B1A2E;
