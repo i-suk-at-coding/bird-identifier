@@ -1,20 +1,51 @@
 import os
 import json
 import base64
+import time
 import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from PIL import Image
 from io import BytesIO
 from dotenv import load_dotenv
 
-load_dotenv()  # Load .env file
+# Cache for auto-fetched iNaturalist token
+_inaturalist_token_cache = {'token': '', 'expires_at': 0}
 
-# Load .env file for local development
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass  # python-dotenv not installed
+def get_inaturalist_token():
+    """Auto-fetch iNaturalist JWT token or use manually configured one"""
+    global _inaturalist_token_cache
+    
+    # First check if manually configured
+    manual_token = os.environ.get('INATURALIST_JWT', '') or os.environ.get('INATURALIST_TOKEN', '')
+    if manual_token:
+        return manual_token
+    
+    # Check cache (tokens expire after 24h, refresh after 23h)
+    if _inaturalist_token_cache['token'] and time.time() < _inaturalist_token_cache['expires_at']:
+        return _inaturalist_token_cache['token']
+    
+    # Try auto-fetch using username/password
+    username = os.environ.get('INATURALIST_USERNAME', '')
+    password = os.environ.get('INATURALIST_PASSWORD', '')
+    if username and password:
+        try:
+            resp = requests.get(
+                'https://www.inaturalist.org/users/api_token',
+                auth=(username, password),
+                timeout=15
+            )
+            if resp.status_code == 200:
+                token = resp.json().get('api_token', '')
+                if token:
+                    print(f"  Auto-fetched iNaturalist JWT (user: {username})")
+                    _inaturalist_token_cache['token'] = token
+                    _inaturalist_token_cache['expires_at'] = time.time() + 82800  # 23 hours
+                    return token
+            print(f"  iNaturalist auth failed: {resp.status_code}")
+        except Exception as e:
+            print(f"  iNaturalist auth error: {e}")
+    
+    return ''
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
@@ -859,7 +890,7 @@ def identify():
         image_base64 = base64.b64encode(image_data).decode('utf-8')
 
         # Get API credentials
-        inat_token = os.environ.get('INATURALIST_JWT', '') or os.environ.get('INATURALIST_TOKEN', '')
+        inat_token = get_inaturalist_token()
         google_key = os.environ.get('GOOGLE_CLOUD_API_KEY', '') or os.environ.get('GOOGLE_API_KEY', '')
         
         print(f"DEBUG - INATURALIST_JWT present: {bool(inat_token)}")
