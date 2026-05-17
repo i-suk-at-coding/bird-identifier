@@ -604,6 +604,10 @@ function updateAllUI() {
     document.querySelector('#btn-upload').textContent = window.currentI18n.btn_upload;
     document.querySelector('#btn-camera').textContent = window.currentI18n.btn_camera;
 
+    // Update loading text
+    const loadingText = document.querySelector('.loading-section p');
+    if (loadingText) loadingText.textContent = window.currentI18n.loading;
+
     // Update identify button if visible
     const btnIdentifyEl = document.getElementById('btn-identify');
     if (btnIdentifyEl && !btnIdentifyEl.classList.contains('hidden')) {
